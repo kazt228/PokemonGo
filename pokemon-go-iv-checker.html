@@ -1,0 +1,1235 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Pokemon GO 個体値ランクチェッカー</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --bg: #f5f7fb;
+      --panel: #ffffff;
+      --ink: #172033;
+      --muted: #65708a;
+      --line: #dbe2ef;
+      --blue: #2f6fed;
+      --green: #1f9d72;
+      --red: #d84b4b;
+      --yellow: #f2b43b;
+      --shadow: 0 16px 40px rgba(23, 32, 51, 0.08);
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background: var(--bg);
+      color: var(--ink);
+    }
+
+    button,
+    input,
+    select {
+      font: inherit;
+    }
+
+    .app {
+      min-height: 100vh;
+    }
+
+    .topbar {
+      background: #172033;
+      color: #fff;
+      border-bottom: 4px solid var(--yellow);
+    }
+
+    .topbar-inner {
+      max-width: 1180px;
+      margin: 0 auto;
+      padding: 18px 18px 16px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      min-width: 0;
+    }
+
+    .mark {
+      width: 38px;
+      height: 38px;
+      border-radius: 50%;
+      background:
+        linear-gradient(#d84b4b 0 47%, #172033 47% 53%, #ffffff 53% 100%);
+      border: 3px solid #fff;
+      box-shadow: inset 0 0 0 3px #172033;
+      flex: 0 0 auto;
+      position: relative;
+    }
+
+    .mark::after {
+      content: "";
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      background: #fff;
+      border: 3px solid #172033;
+      position: absolute;
+      inset: 0;
+      margin: auto;
+    }
+
+    h1 {
+      margin: 0;
+      font-size: clamp(20px, 3vw, 30px);
+      letter-spacing: 0;
+      line-height: 1.2;
+    }
+
+    .updated {
+      color: #c9d3e8;
+      font-size: 13px;
+      white-space: nowrap;
+    }
+
+    main {
+      max-width: 1180px;
+      margin: 0 auto;
+      padding: 24px 18px 44px;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: minmax(0, 420px) minmax(0, 1fr);
+      gap: 18px;
+      align-items: start;
+    }
+
+    .grid > * {
+      min-width: 0;
+    }
+
+    .panel {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      box-shadow: var(--shadow);
+      min-width: 0;
+    }
+
+    .panel-header {
+      padding: 16px 18px 12px;
+      border-bottom: 1px solid var(--line);
+    }
+
+    .panel-header h2 {
+      margin: 0;
+      font-size: 18px;
+      line-height: 1.25;
+    }
+
+    .panel-body {
+      padding: 18px;
+    }
+
+    .field {
+      margin-bottom: 16px;
+    }
+
+    label,
+    .label {
+      display: block;
+      color: var(--muted);
+      font-size: 13px;
+      font-weight: 700;
+      margin-bottom: 7px;
+    }
+
+    input[type="search"],
+    input[type="number"],
+    select {
+      width: 100%;
+      min-height: 42px;
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      padding: 9px 11px;
+      color: var(--ink);
+      background: #fff;
+    }
+
+    input:focus,
+    select:focus,
+    button:focus-visible {
+      outline: 3px solid rgba(47, 111, 237, 0.22);
+      border-color: var(--blue);
+    }
+
+    .pokemon-picker {
+      position: relative;
+    }
+
+    .suggestions {
+      position: absolute;
+      z-index: 10;
+      top: calc(100% + 4px);
+      left: 0;
+      right: 0;
+      background: #fff;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      box-shadow: var(--shadow);
+      max-height: 260px;
+      overflow: auto;
+      display: none;
+    }
+
+    .suggestions.active {
+      display: block;
+    }
+
+    .suggestions button {
+      width: 100%;
+      border: 0;
+      background: transparent;
+      text-align: left;
+      padding: 10px 12px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      cursor: pointer;
+      color: var(--ink);
+    }
+
+    .suggestions button:hover {
+      background: #edf3ff;
+    }
+
+    .dex {
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    .selected {
+      margin-top: 10px;
+      padding: 10px 12px;
+      border-radius: 6px;
+      background: #edf3ff;
+      color: #183c84;
+      font-weight: 700;
+    }
+
+    .row {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 10px;
+    }
+
+    .iv-gauges {
+      display: grid;
+      gap: 12px;
+      margin-bottom: 16px;
+    }
+
+    .iv-gauge {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 12px;
+      background: #fbfcff;
+    }
+
+    .iv-gauge-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 10px;
+    }
+
+    .iv-gauge-head .label {
+      margin: 0;
+    }
+
+    .iv-value {
+      min-width: 34px;
+      text-align: right;
+      color: var(--blue);
+      font-weight: 900;
+      font-size: 18px;
+    }
+
+    .iv-control {
+      display: grid;
+      grid-template-columns: 38px minmax(0, 1fr);
+      gap: 8px;
+      align-items: stretch;
+    }
+
+    .iv-zero,
+    .iv-segment {
+      border: 1px solid #cfd8ea;
+      background: #fff;
+      cursor: pointer;
+      transition: background 0.12s ease, border-color 0.12s ease, transform 0.12s ease;
+    }
+
+    .iv-zero {
+      min-height: 34px;
+      border-radius: 6px;
+      color: var(--muted);
+      font-weight: 800;
+    }
+
+    .iv-zero.active {
+      color: #fff;
+      background: var(--blue);
+      border-color: var(--blue);
+    }
+
+    .iv-bar {
+      display: grid;
+      grid-template-columns: repeat(5, minmax(8px, 1fr)) 8px repeat(5, minmax(8px, 1fr)) 8px repeat(5, minmax(8px, 1fr));
+      gap: 3px;
+      min-width: 0;
+    }
+
+    .iv-gap {
+      pointer-events: none;
+    }
+
+    .iv-segment {
+      min-height: 34px;
+      border-radius: 3px;
+      padding: 0;
+    }
+
+    .iv-segment.active {
+      background: var(--blue);
+      border-color: var(--blue);
+    }
+
+    .iv-segment:hover,
+    .iv-zero:hover {
+      transform: translateY(-1px);
+      border-color: var(--blue);
+    }
+
+    .sr-only {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      padding: 0;
+      margin: -1px;
+      overflow: hidden;
+      clip: rect(0, 0, 0, 0);
+      white-space: nowrap;
+      border: 0;
+    }
+
+    .segmented {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 6px;
+      background: #eef2f8;
+      border-radius: 8px;
+      padding: 5px;
+    }
+
+    .segmented button {
+      border: 0;
+      min-height: 38px;
+      border-radius: 6px;
+      color: var(--muted);
+      background: transparent;
+      cursor: pointer;
+      font-weight: 700;
+    }
+
+    .segmented button.active {
+      color: #fff;
+      background: var(--blue);
+      box-shadow: 0 8px 18px rgba(47, 111, 237, 0.22);
+    }
+
+    .switchline {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 12px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      margin-bottom: 16px;
+    }
+
+    .switchline span {
+      font-weight: 700;
+      font-size: 14px;
+    }
+
+    .switchline input {
+      width: 20px;
+      height: 20px;
+      accent-color: var(--blue);
+    }
+
+    .tabs {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+      margin-bottom: 16px;
+    }
+
+    .tabs button {
+      min-height: 40px;
+      border-radius: 6px;
+      border: 1px solid var(--line);
+      background: #fff;
+      color: var(--muted);
+      cursor: pointer;
+      font-weight: 700;
+    }
+
+    .tabs button.active {
+      border-color: var(--blue);
+      color: var(--blue);
+      background: #edf3ff;
+    }
+
+    .upload-box {
+      border: 1px dashed #9aa8c0;
+      border-radius: 8px;
+      padding: 18px;
+      text-align: center;
+      color: var(--muted);
+      background: #fbfcff;
+    }
+
+    .primary {
+      width: 100%;
+      min-height: 46px;
+      border: 0;
+      border-radius: 6px;
+      background: var(--blue);
+      color: #fff;
+      cursor: pointer;
+      font-weight: 800;
+      box-shadow: 0 10px 22px rgba(47, 111, 237, 0.24);
+    }
+
+    .primary:hover {
+      background: #265dcc;
+    }
+
+    .result-card {
+      display: grid;
+      grid-template-columns: minmax(0, 1.05fr) minmax(0, 1fr);
+      gap: 14px;
+      align-items: stretch;
+    }
+
+    .score {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 18px;
+      background: #fbfcff;
+    }
+
+    .rankline {
+      display: flex;
+      align-items: baseline;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .rank {
+      font-size: clamp(34px, 5vw, 58px);
+      font-weight: 900;
+      line-height: 1;
+      color: var(--blue);
+    }
+
+    .rank-label {
+      color: var(--muted);
+      font-weight: 800;
+    }
+
+    .percent {
+      margin-top: 12px;
+      height: 12px;
+      background: #e7edf6;
+      border-radius: 999px;
+      overflow: hidden;
+    }
+
+    .percent span {
+      display: block;
+      height: 100%;
+      width: 0;
+      background: linear-gradient(90deg, var(--green), var(--yellow));
+    }
+
+    .subscore {
+      margin-top: 10px;
+      color: var(--muted);
+      font-size: 14px;
+    }
+
+    .stats {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 10px;
+    }
+
+    .stat {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 12px;
+      background: #fff;
+      min-height: 76px;
+    }
+
+    .stat b {
+      display: block;
+      color: var(--muted);
+      font-size: 12px;
+      margin-bottom: 7px;
+    }
+
+    .stat span {
+      font-weight: 900;
+      font-size: 20px;
+    }
+
+    .family-results {
+      margin-top: 14px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      overflow: hidden;
+      background: #fff;
+    }
+
+    .family-results h3 {
+      margin: 0;
+      padding: 12px 14px;
+      border-bottom: 1px solid var(--line);
+      font-size: 15px;
+      line-height: 1.3;
+      background: #f3f6fb;
+    }
+
+    .family-list {
+      display: grid;
+    }
+
+    .family-row {
+      display: grid;
+      grid-template-columns: minmax(0, 1.25fr) 76px 70px 70px 82px;
+      gap: 10px;
+      align-items: center;
+      padding: 10px 14px;
+      border-bottom: 1px solid var(--line);
+      font-size: 13px;
+    }
+
+    .family-row:last-child {
+      border-bottom: 0;
+    }
+
+    .family-row.current {
+      background: #fff7df;
+      font-weight: 800;
+    }
+
+    .family-name {
+      min-width: 0;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .family-muted {
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 700;
+    }
+
+    .family-value {
+      text-align: right;
+      white-space: nowrap;
+    }
+
+    .ranking {
+      margin-top: 18px;
+      overflow: hidden;
+    }
+
+    .table-wrap {
+      overflow: auto;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      min-width: 780px;
+    }
+
+    th,
+    td {
+      padding: 10px 12px;
+      border-bottom: 1px solid var(--line);
+      text-align: right;
+      white-space: nowrap;
+      font-size: 14px;
+    }
+
+    th {
+      background: #f3f6fb;
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    th:first-child,
+    td:first-child,
+    th:nth-child(2),
+    td:nth-child(2) {
+      text-align: left;
+    }
+
+    tr.highlight td {
+      background: #fff7df;
+      font-weight: 800;
+    }
+
+    .empty {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 22px;
+      color: var(--muted);
+      background: #fbfcff;
+      text-align: center;
+    }
+
+    .note {
+      margin-top: 10px;
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.6;
+    }
+
+    .hidden {
+      display: none;
+    }
+
+    @media (max-width: 880px) {
+      .topbar-inner {
+        align-items: flex-start;
+        flex-direction: column;
+      }
+
+      .updated {
+        white-space: normal;
+      }
+
+      .grid,
+      .result-card {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    @media (max-width: 560px) {
+      main {
+        padding-inline: 12px;
+      }
+
+      .panel-body,
+      .panel-header {
+        padding-inline: 14px;
+      }
+
+      .segmented {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+
+      .row,
+      .stats,
+      .family-row {
+        grid-template-columns: 1fr;
+      }
+
+      .family-value {
+        text-align: left;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <header class="topbar">
+      <div class="topbar-inner">
+        <div class="brand">
+          <div class="mark" aria-hidden="true"></div>
+          <h1>Pokemon GO 個体値ランクチェッカー</h1>
+        </div>
+        <div class="updated">手動入力MVP / PvP用ランキング対応</div>
+      </div>
+    </header>
+
+    <main>
+      <div class="grid">
+        <section class="panel" aria-label="入力">
+          <div class="panel-header">
+            <h2>チェック条件</h2>
+          </div>
+          <div class="panel-body">
+            <div class="field pokemon-picker">
+              <label for="pokemonSearch">ポケモン名</label>
+              <input id="pokemonSearch" type="search" autocomplete="off" placeholder="例: フシギバナ / venusaur">
+              <div id="suggestions" class="suggestions"></div>
+              <div id="selectedPokemon" class="selected"></div>
+            </div>
+
+            <div class="field">
+              <div class="label">リーグ</div>
+              <div class="segmented" id="leagueButtons"></div>
+            </div>
+
+            <div class="field">
+              <label for="maxLevel">最大レベル</label>
+              <select id="maxLevel">
+                <option value="40">40</option>
+                <option value="41">41</option>
+                <option value="50" selected>50</option>
+                <option value="51">51</option>
+              </select>
+            </div>
+
+            <label class="switchline" for="minIvToggle">
+              <span>個体値10以上のみ表示する</span>
+              <input id="minIvToggle" type="checkbox">
+            </label>
+
+            <div class="tabs" role="tablist" aria-label="入力方法">
+              <button id="manualTab" class="active" type="button">手動で入力</button>
+              <button id="imageTab" type="button">スクショ入力</button>
+            </div>
+
+            <div id="manualInput">
+              <div class="iv-gauges" id="ivGauges" aria-label="個体値ゲージ"></div>
+              <div class="sr-only">
+                <label for="atkIv">攻撃</label>
+                <input id="atkIv" type="number" min="0" max="15" value="0">
+                <label for="defIv">防御</label>
+                <input id="defIv" type="number" min="0" max="15" value="15">
+                <label for="staIv">HP</label>
+                <input id="staIv" type="number" min="0" max="15" value="15">
+              </div>
+            </div>
+
+            <div id="imageInput" class="hidden">
+              <div class="upload-box">
+                <strong>スクショ解析は次フェーズ</strong>
+                <div class="note">まずは計算精度を固めるため、MVPでは手動入力を実装しています。</div>
+              </div>
+            </div>
+
+            <button id="calculateButton" class="primary" type="button">ランクを計算</button>
+            <div class="note">CP制限リーグでは、制限CP以下で最もSCPが高くなるレベルを探索します。</div>
+          </div>
+        </section>
+
+        <section>
+          <div class="panel">
+            <div class="panel-header">
+              <h2>判定結果</h2>
+            </div>
+            <div class="panel-body">
+              <div id="result"></div>
+            </div>
+          </div>
+
+          <div class="panel ranking">
+            <div class="panel-header">
+              <h2 id="rankingTitle">対戦個体値ランキング</h2>
+            </div>
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>順位</th>
+                    <th>個体値</th>
+                    <th>PL</th>
+                    <th>CP</th>
+                    <th>攻撃</th>
+                    <th>防御</th>
+                    <th>HP</th>
+                    <th>SCP</th>
+                    <th>理想比</th>
+                  </tr>
+                </thead>
+                <tbody id="rankingBody"></tbody>
+              </table>
+            </div>
+          </div>
+        </section>
+      </div>
+    </main>
+  </div>
+
+  <script src="pokemon-data.js"></script>
+  <script>
+    const CP_MULTIPLIERS = {
+      1: 0.094, 1.5: 0.135137432, 2: 0.16639787, 2.5: 0.192650919, 3: 0.21573247,
+      3.5: 0.236572661, 4: 0.25572005, 4.5: 0.273530381, 5: 0.29024988,
+      5.5: 0.306057377, 6: 0.3210876, 6.5: 0.335445036, 7: 0.34921268,
+      7.5: 0.362457751, 8: 0.37523559, 8.5: 0.387592406, 9: 0.39956728,
+      9.5: 0.411193551, 10: 0.42250001, 10.5: 0.432926419, 11: 0.44310755,
+      11.5: 0.4530599578, 12: 0.46279839, 12.5: 0.472336083, 13: 0.48168495,
+      13.5: 0.4908558, 14: 0.49985844, 14.5: 0.508701765, 15: 0.51739395,
+      15.5: 0.525942511, 16: 0.53435433, 16.5: 0.542635767, 17: 0.55079269,
+      17.5: 0.558830576, 18: 0.56675452, 18.5: 0.574569153, 19: 0.58227891,
+      19.5: 0.589887917, 20: 0.59740001, 20.5: 0.604823665, 21: 0.61215729,
+      21.5: 0.619404122, 22: 0.62656713, 22.5: 0.633649143, 23: 0.64065295,
+      23.5: 0.647580967, 24: 0.65443563, 24.5: 0.661219252, 25: 0.667934,
+      25.5: 0.674581896, 26: 0.68116492, 26.5: 0.687684904, 27: 0.69414365,
+      27.5: 0.70054287, 28: 0.70688421, 28.5: 0.713169109, 29: 0.71939909,
+      29.5: 0.725575614, 30: 0.7317, 30.5: 0.734741009, 31: 0.73776948,
+      31.5: 0.740785574, 32: 0.74378943, 32.5: 0.746781211, 33: 0.74976104,
+      33.5: 0.752729087, 34: 0.75568551, 34.5: 0.758630378, 35: 0.76156384,
+      35.5: 0.764486065, 36: 0.76739717, 36.5: 0.770297266, 37: 0.7731865,
+      37.5: 0.776064962, 38: 0.77893275, 38.5: 0.781790055, 39: 0.78463697,
+      39.5: 0.787473578, 40: 0.79030001, 40.5: 0.792803968, 41: 0.79530001,
+      41.5: 0.797803922, 42: 0.8003, 42.5: 0.802803892, 43: 0.8053,
+      43.5: 0.807803863, 44: 0.81029999, 44.5: 0.812803834, 45: 0.81529999,
+      45.5: 0.817803806, 46: 0.82029999, 46.5: 0.822803778, 47: 0.82529999,
+      47.5: 0.827803751, 48: 0.83029999, 48.5: 0.832803753, 49: 0.83529999,
+      49.5: 0.837803755, 50: 0.84029999, 50.5: 0.842803729, 51: 0.84529999
+    };
+
+    const POKEMON = window.POKEMON_DATA || [];
+
+    const LEAGUES = {
+      great: { label: "スーパー", limit: 1500 },
+      ultra: { label: "ハイパー", limit: 2500 },
+      master: { label: "マスター", limit: Infinity },
+      little: { label: "リトル", limit: 500 }
+    };
+
+    const state = {
+      pokemon: POKEMON.find((pokemon) => pokemon.name === "フシギバナ"),
+      league: "great",
+      maxLevel: 50,
+      minIv: 0,
+      input: { attack: 0, defense: 15, stamina: 15 },
+      rankings: [],
+      rankCache: new Map()
+    };
+
+    const elements = {
+      search: document.querySelector("#pokemonSearch"),
+      suggestions: document.querySelector("#suggestions"),
+      selected: document.querySelector("#selectedPokemon"),
+      leagueButtons: document.querySelector("#leagueButtons"),
+      maxLevel: document.querySelector("#maxLevel"),
+      minIvToggle: document.querySelector("#minIvToggle"),
+      manualTab: document.querySelector("#manualTab"),
+      imageTab: document.querySelector("#imageTab"),
+      manualInput: document.querySelector("#manualInput"),
+      imageInput: document.querySelector("#imageInput"),
+      ivGauges: document.querySelector("#ivGauges"),
+      atkIv: document.querySelector("#atkIv"),
+      defIv: document.querySelector("#defIv"),
+      staIv: document.querySelector("#staIv"),
+      calculateButton: document.querySelector("#calculateButton"),
+      result: document.querySelector("#result"),
+      rankingBody: document.querySelector("#rankingBody"),
+      rankingTitle: document.querySelector("#rankingTitle")
+    };
+
+    function clampIv(value) {
+      const number = Number(value);
+      if (Number.isNaN(number)) return 0;
+      return Math.min(15, Math.max(0, Math.trunc(number)));
+    }
+
+    function cpFor(pokemon, ivs, level) {
+      const cpm = CP_MULTIPLIERS[level];
+      const attack = pokemon.attack + ivs.attack;
+      const defense = pokemon.defense + ivs.defense;
+      const stamina = pokemon.stamina + ivs.stamina;
+      return Math.max(10, Math.floor((attack * Math.sqrt(defense) * Math.sqrt(stamina) * cpm * cpm) / 10));
+    }
+
+    function statsFor(pokemon, ivs, level) {
+      const cpm = CP_MULTIPLIERS[level];
+      const attack = (pokemon.attack + ivs.attack) * cpm;
+      const defense = (pokemon.defense + ivs.defense) * cpm;
+      const hp = Math.floor((pokemon.stamina + ivs.stamina) * cpm);
+      const cp = cpFor(pokemon, ivs, level);
+      return {
+        attack,
+        defense,
+        hp,
+        cp,
+        statProduct: attack * defense * hp
+      };
+    }
+
+    function levelsUpTo(maxLevel) {
+      const levels = [];
+      for (let level = 1; level <= maxLevel; level += 0.5) {
+        levels.push(level);
+      }
+      return levels;
+    }
+
+    function bestBuildForIvs(pokemon, ivs, league, maxLevel) {
+      const limit = LEAGUES[league].limit;
+      let best = null;
+      for (const level of levelsUpTo(maxLevel)) {
+        const stats = statsFor(pokemon, ivs, level);
+        if (stats.cp <= limit) {
+          if (!best || stats.statProduct > best.statProduct) {
+            best = { ...stats, level, ivs };
+          }
+        }
+      }
+      return best;
+    }
+
+    function rankPokemon(pokemon, league, maxLevel, minIv) {
+      const cacheKey = `${pokemon.sourceId || pokemon.id}:${league}:${maxLevel}:${minIv}`;
+      if (state.rankCache.has(cacheKey)) return state.rankCache.get(cacheKey);
+
+      const rows = [];
+      for (let attack = minIv; attack <= 15; attack += 1) {
+        for (let defense = minIv; defense <= 15; defense += 1) {
+          for (let stamina = minIv; stamina <= 15; stamina += 1) {
+            const build = bestBuildForIvs(pokemon, { attack, defense, stamina }, league, maxLevel);
+            if (build) rows.push(build);
+          }
+        }
+      }
+
+      rows.sort((a, b) => {
+        if (b.statProduct !== a.statProduct) return b.statProduct - a.statProduct;
+        if (b.cp !== a.cp) return b.cp - a.cp;
+        if (a.ivs.attack !== b.ivs.attack) return a.ivs.attack - b.ivs.attack;
+        if (b.ivs.defense !== a.ivs.defense) return b.ivs.defense - a.ivs.defense;
+        return b.ivs.stamina - a.ivs.stamina;
+      });
+
+      const top = rows[0]?.statProduct || 1;
+      const rankedRows = rows.map((row, index) => ({
+        ...row,
+        rank: index + 1,
+        percent: (row.statProduct / top) * 100
+      }));
+      state.rankCache.set(cacheKey, rankedRows);
+      return rankedRows;
+    }
+
+    function ivKey(ivs) {
+      return `${ivs.attack}/${ivs.defense}/${ivs.stamina}`;
+    }
+
+    function formatNumber(value, digits = 1) {
+      return new Intl.NumberFormat("ja-JP", {
+        maximumFractionDigits: digits,
+        minimumFractionDigits: digits
+      }).format(value);
+    }
+
+    function setPokemon(pokemon) {
+      state.pokemon = pokemon;
+      elements.search.value = "";
+      elements.suggestions.classList.remove("active");
+      renderSelectedPokemon();
+      calculate();
+    }
+
+    function renderSelectedPokemon() {
+      elements.selected.textContent = `No.${state.pokemon.id} ${state.pokemon.name} (${state.pokemon.en})`;
+    }
+
+    function renderLeagueButtons() {
+      elements.leagueButtons.innerHTML = "";
+      Object.entries(LEAGUES).forEach(([key, league]) => {
+        const button = document.createElement("button");
+        button.type = "button";
+        button.textContent = league.label;
+        button.className = key === state.league ? "active" : "";
+        button.addEventListener("click", () => {
+          state.league = key;
+          renderLeagueButtons();
+          calculate();
+        });
+        elements.leagueButtons.appendChild(button);
+      });
+    }
+
+    function renderIvGauges() {
+      const gauges = [
+        { key: "attack", label: "攻撃", input: elements.atkIv },
+        { key: "defense", label: "防御", input: elements.defIv },
+        { key: "stamina", label: "HP", input: elements.staIv }
+      ];
+
+      elements.ivGauges.innerHTML = "";
+      gauges.forEach((gauge) => {
+        const value = clampIv(gauge.input.value);
+        const wrapper = document.createElement("div");
+        wrapper.className = "iv-gauge";
+        wrapper.innerHTML = `
+          <div class="iv-gauge-head">
+            <div class="label">${gauge.label}</div>
+            <div class="iv-value" id="${gauge.key}Value">${value}</div>
+          </div>
+          <div class="iv-control">
+            <button class="iv-zero ${value === 0 ? "active" : ""}" type="button" aria-label="${gauge.label}を0にする">0</button>
+            <div class="iv-bar" role="group" aria-label="${gauge.label} 1から15">
+              ${Array.from({ length: 17 }, (_, index) => {
+                if (index === 5 || index === 11) return '<span class="iv-gap" aria-hidden="true"></span>';
+                const segmentValue = index < 5 ? index + 1 : index < 11 ? index : index - 1;
+                const active = segmentValue <= value ? "active" : "";
+                return `<button class="iv-segment ${active}" type="button" data-value="${segmentValue}" aria-label="${gauge.label} ${segmentValue}"></button>`;
+              }).join("")}
+            </div>
+          </div>
+        `;
+
+        wrapper.querySelector(".iv-zero").addEventListener("click", () => setIvValue(gauge.input, 0));
+        wrapper.querySelectorAll(".iv-segment").forEach((button) => {
+          button.addEventListener("click", () => setIvValue(gauge.input, button.dataset.value));
+        });
+        elements.ivGauges.appendChild(wrapper);
+      });
+    }
+
+    function setIvValue(input, value) {
+      input.value = clampIv(value);
+      calculate();
+    }
+
+    function renderSuggestions() {
+      const query = elements.search.value.trim().toLowerCase();
+      elements.suggestions.innerHTML = "";
+      if (!query) {
+        elements.suggestions.classList.remove("active");
+        return;
+      }
+
+      const matches = POKEMON.filter((pokemon) => {
+        return pokemon.name.includes(query) ||
+          pokemon.en.includes(query) ||
+          String(pokemon.id) === query;
+      }).slice(0, 12);
+
+      matches.forEach((pokemon) => {
+        const button = document.createElement("button");
+        button.type = "button";
+        button.innerHTML = `<span>${pokemon.name}<span class="dex"> / ${pokemon.en}</span></span><span class="dex">No.${pokemon.id}</span>`;
+        button.addEventListener("click", () => setPokemon(pokemon));
+        elements.suggestions.appendChild(button);
+      });
+
+      elements.suggestions.classList.toggle("active", matches.length > 0);
+    }
+
+    function renderResult(selected) {
+      if (!selected) {
+        elements.result.innerHTML = '<div class="empty">この条件ではCP制限内の候補がありません。</div>';
+        return;
+      }
+
+      const diff = typeof selected.rank === "number" ? `${selected.rank - 1}ランク` : "ランキング対象外";
+      const familyResults = buildFamilyResults();
+      elements.result.innerHTML = `
+        <div class="result-card">
+          <div class="score">
+            <div class="rankline">
+              <div class="rank">${selected.rank}</div>
+              <div class="rank-label">位 / ${state.rankings.length}通り</div>
+            </div>
+            <div class="percent" aria-hidden="true"><span style="width:${selected.percent}%"></span></div>
+            <div class="subscore">理想比 ${formatNumber(selected.percent, 2)}% / TOPとの差 ${diff}</div>
+          </div>
+          <div class="stats">
+            <div class="stat"><b>個体値</b><span>${ivKey(selected.ivs)}</span></div>
+            <div class="stat"><b>最適PL</b><span>${selected.level}</span></div>
+            <div class="stat"><b>最終CP</b><span>${selected.cp}</span></div>
+            <div class="stat"><b>SCP</b><span>${Math.round(selected.statProduct).toLocaleString("ja-JP")}</span></div>
+            <div class="stat"><b>攻撃実数値</b><span>${formatNumber(selected.attack)}</span></div>
+            <div class="stat"><b>防御 / HP</b><span>${formatNumber(selected.defense)} / ${selected.hp}</span></div>
+          </div>
+        </div>
+        ${renderFamilyResults(familyResults)}
+      `;
+    }
+
+    function getFamilyPokemon() {
+      return POKEMON.filter((pokemon) => pokemon.family === state.pokemon.family)
+        .sort((a, b) => a.id - b.id || a.name.localeCompare(b.name, "ja"));
+    }
+
+    function selectedBuildForPokemon(pokemon) {
+      const rankings = rankPokemon(pokemon, state.league, state.maxLevel, state.minIv);
+      const selected = rankings.find((row) => ivKey(row.ivs) === ivKey(state.input));
+      if (selected) return { selected, total: rankings.length };
+
+      const outOfFilterBuild = bestBuildForIvs(pokemon, state.input, state.league, state.maxLevel);
+      if (!outOfFilterBuild) return { selected: null, total: rankings.length };
+      return {
+        selected: {
+          ...outOfFilterBuild,
+          rank: "-",
+          percent: (outOfFilterBuild.statProduct / (rankings[0]?.statProduct || outOfFilterBuild.statProduct)) * 100
+        },
+        total: rankings.length
+      };
+    }
+
+    function buildFamilyResults() {
+      return getFamilyPokemon().map((pokemon) => {
+        const result = selectedBuildForPokemon(pokemon);
+        return { pokemon, ...result };
+      });
+    }
+
+    function renderFamilyResults(results) {
+      if (results.length <= 1) return "";
+      return `
+        <div class="family-results">
+          <h3>進化系での順位</h3>
+          <div class="family-list">
+            ${results.map(({ pokemon, selected, total }) => {
+              const isCurrent = pokemon.sourceId === state.pokemon.sourceId;
+              if (!selected) {
+                return `
+                  <div class="family-row ${isCurrent ? "current" : ""}">
+                    <div class="family-name">${pokemon.name}<div class="family-muted">No.${pokemon.id}</div></div>
+                    <div class="family-value">対象外</div>
+                    <div class="family-value">-</div>
+                    <div class="family-value">-</div>
+                    <div class="family-value">-</div>
+                  </div>
+                `;
+              }
+              const rankText = typeof selected.rank === "number" ? `${selected.rank}位` : "-";
+              const totalText = typeof selected.rank === "number" ? `/${total}通り` : "対象外";
+              return `
+                <div class="family-row ${isCurrent ? "current" : ""}">
+                  <div class="family-name">${pokemon.name}<div class="family-muted">No.${pokemon.id} ${pokemon.en}</div></div>
+                  <div class="family-value">${rankText}<div class="family-muted">${totalText}</div></div>
+                  <div class="family-value">PL ${selected.level}</div>
+                  <div class="family-value">CP ${selected.cp}</div>
+                  <div class="family-value">${formatNumber(selected.percent, 2)}%</div>
+                </div>
+              `;
+            }).join("")}
+          </div>
+        </div>
+      `;
+    }
+
+    function renderRanking(selected) {
+      const league = LEAGUES[state.league];
+      elements.rankingTitle.textContent = `${league.label}リーグ TOP100`;
+      const selectedKey = ivKey(state.input);
+      const rows = state.rankings.slice(0, 100);
+      const selectedInTop = selected && selected.rank <= 100;
+      elements.rankingBody.innerHTML = "";
+
+      rows.forEach((row) => appendRankingRow(row, ivKey(row.ivs) === selectedKey));
+      if (selected && !selectedInTop) appendRankingRow(selected, true);
+    }
+
+    function appendRankingRow(row, highlight) {
+      const tr = document.createElement("tr");
+      tr.className = highlight ? "highlight" : "";
+      tr.innerHTML = `
+        <td>${row.rank}</td>
+        <td>${ivKey(row.ivs)}</td>
+        <td>${row.level}</td>
+        <td>${row.cp}</td>
+        <td>${formatNumber(row.attack)}</td>
+        <td>${formatNumber(row.defense)}</td>
+        <td>${row.hp}</td>
+        <td>${Math.round(row.statProduct).toLocaleString("ja-JP")}</td>
+        <td>${formatNumber(row.percent, 2)}%</td>
+      `;
+      elements.rankingBody.appendChild(tr);
+    }
+
+    function calculate() {
+      state.maxLevel = Number(elements.maxLevel.value);
+      state.minIv = elements.minIvToggle.checked ? 10 : 0;
+      state.input = {
+        attack: clampIv(elements.atkIv.value),
+        defense: clampIv(elements.defIv.value),
+        stamina: clampIv(elements.staIv.value)
+      };
+
+      elements.atkIv.value = state.input.attack;
+      elements.defIv.value = state.input.defense;
+      elements.staIv.value = state.input.stamina;
+      renderIvGauges();
+
+      state.rankings = rankPokemon(state.pokemon, state.league, state.maxLevel, state.minIv);
+      let selected = state.rankings.find((row) => ivKey(row.ivs) === ivKey(state.input));
+
+      if (!selected && state.minIv > 0) {
+        selected = bestBuildForIvs(state.pokemon, state.input, state.league, state.maxLevel);
+        if (selected) {
+          selected.rank = "-";
+          selected.percent = (selected.statProduct / (state.rankings[0]?.statProduct || selected.statProduct)) * 100;
+        }
+      }
+
+      renderResult(selected);
+      renderRanking(selected);
+    }
+
+    elements.search.addEventListener("input", renderSuggestions);
+    elements.maxLevel.addEventListener("change", calculate);
+    elements.minIvToggle.addEventListener("change", calculate);
+    elements.calculateButton.addEventListener("click", calculate);
+    [elements.atkIv, elements.defIv, elements.staIv].forEach((input) => {
+      input.addEventListener("change", calculate);
+    });
+
+    elements.manualTab.addEventListener("click", () => {
+      elements.manualTab.classList.add("active");
+      elements.imageTab.classList.remove("active");
+      elements.manualInput.classList.remove("hidden");
+      elements.imageInput.classList.add("hidden");
+    });
+
+    elements.imageTab.addEventListener("click", () => {
+      elements.imageTab.classList.add("active");
+      elements.manualTab.classList.remove("active");
+      elements.imageInput.classList.remove("hidden");
+      elements.manualInput.classList.add("hidden");
+    });
+
+    document.addEventListener("click", (event) => {
+      if (!event.target.closest(".pokemon-picker")) {
+        elements.suggestions.classList.remove("active");
+      }
+    });
+
+    renderSelectedPokemon();
+    renderLeagueButtons();
+    renderIvGauges();
+    calculate();
+  </script>
+</body>
+</html>
