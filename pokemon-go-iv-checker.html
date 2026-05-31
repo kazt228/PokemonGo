@@ -503,6 +503,33 @@
       padding: 7px 9px;
     }
 
+    .scan-name-search {
+      width: 100%;
+      min-height: 38px;
+      margin-bottom: 8px;
+      border-radius: 6px;
+      border: 1px solid var(--line);
+      padding: 7px 9px;
+    }
+
+    .scan-iv-controls {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 8px;
+    }
+
+    .scan-iv-controls input {
+      min-height: 38px;
+      padding: 7px 9px;
+    }
+
+    .scan-debug {
+      margin-top: 8px;
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.45;
+    }
+
     .scan-actions {
       display: grid;
       grid-template-columns: 1fr 1fr;
@@ -780,7 +807,8 @@
       }
 
       .scan-actions,
-      .scan-row {
+      .scan-row,
+      .scan-iv-controls {
         grid-template-columns: 1fr;
       }
 
@@ -867,20 +895,20 @@
                   <div class="scan-row">
                     <div class="scan-label">ポケモン</div>
                     <div class="scan-value">
+                      <input id="scanPokemonSearch" class="scan-name-search" type="search" placeholder="候補が違う場合は名前で検索">
                       <select id="scanPokemonSelect" class="scan-select"></select>
                     </div>
                   </div>
                   <div class="scan-row">
-                    <div class="scan-label">攻撃</div>
-                    <div class="scan-value" id="scanAttack">-</div>
-                  </div>
-                  <div class="scan-row">
-                    <div class="scan-label">防御</div>
-                    <div class="scan-value" id="scanDefense">-</div>
-                  </div>
-                  <div class="scan-row">
-                    <div class="scan-label">HP</div>
-                    <div class="scan-value" id="scanStamina">-</div>
+                    <div class="scan-label">個体値</div>
+                    <div>
+                      <div class="scan-iv-controls">
+                        <label>攻撃<input id="scanAttackInput" type="number" min="0" max="15" value="0"></label>
+                        <label>防御<input id="scanDefenseInput" type="number" min="0" max="15" value="0"></label>
+                        <label>HP<input id="scanStaminaInput" type="number" min="0" max="15" value="0"></label>
+                      </div>
+                      <div id="scanDebug" class="scan-debug"></div>
+                    </div>
                   </div>
                   <div class="scan-actions">
                     <button id="applyScanButton" class="primary" type="button">この内容で反映</button>
@@ -999,10 +1027,12 @@
       screenshotPreview: document.querySelector("#screenshotPreview"),
       scanStatus: document.querySelector("#scanStatus"),
       scanResult: document.querySelector("#scanResult"),
+      scanPokemonSearch: document.querySelector("#scanPokemonSearch"),
       scanPokemonSelect: document.querySelector("#scanPokemonSelect"),
-      scanAttack: document.querySelector("#scanAttack"),
-      scanDefense: document.querySelector("#scanDefense"),
-      scanStamina: document.querySelector("#scanStamina"),
+      scanAttackInput: document.querySelector("#scanAttackInput"),
+      scanDefenseInput: document.querySelector("#scanDefenseInput"),
+      scanStaminaInput: document.querySelector("#scanStaminaInput"),
+      scanDebug: document.querySelector("#scanDebug"),
       applyScanButton: document.querySelector("#applyScanButton"),
       clearScanButton: document.querySelector("#clearScanButton"),
       atkIv: document.querySelector("#atkIv"),
@@ -1185,10 +1215,12 @@
 
     function resetScanResult() {
       elements.scanResult.classList.remove("active");
+      elements.scanPokemonSearch.value = "";
       elements.scanPokemonSelect.innerHTML = "";
-      elements.scanAttack.textContent = "-";
-      elements.scanDefense.textContent = "-";
-      elements.scanStamina.textContent = "-";
+      elements.scanAttackInput.value = 0;
+      elements.scanDefenseInput.value = 0;
+      elements.scanStaminaInput.value = 0;
+      elements.scanDebug.textContent = "";
       elements.applyScanButton.dataset.attack = "";
       elements.applyScanButton.dataset.defense = "";
       elements.applyScanButton.dataset.stamina = "";
@@ -1235,6 +1267,13 @@
       return sorted[Math.floor(sorted.length / 2)];
     }
 
+    function percentile(values, ratio) {
+      if (!values.length) return 0;
+      const sorted = [...values].sort((a, b) => a - b);
+      const index = Math.min(sorted.length - 1, Math.max(0, Math.round((sorted.length - 1) * ratio)));
+      return sorted[index];
+    }
+
     function colorBoundsForBand(imageData, width, height, centerY, bandHeight) {
       const top = Math.max(0, Math.round(centerY - bandHeight));
       const bottom = Math.min(height - 1, Math.round(centerY + bandHeight));
@@ -1270,6 +1309,95 @@
         }
       }
       return [];
+    }
+
+    function detectIvBarsByCells(imageData, width, height, centers) {
+      const leftLimit = Math.round(width * 0.08);
+      const rightLimit = Math.round(width * 0.96);
+      const allSegments = [];
+      const rowDetails = [];
+
+      centers.forEach((center) => {
+        const top = Math.max(0, Math.round(center - Math.max(8, height * 0.006)));
+        const bottom = Math.min(height - 1, Math.round(center + Math.max(8, height * 0.006)));
+        const columnScores = [];
+        for (let x = leftLimit; x <= rightLimit; x += 1) {
+          let score = 0;
+          for (let y = top; y <= bottom; y += 1) {
+            const index = (y * width + x) * 4;
+            if (isAppraisalBarPixel(imageData.data[index], imageData.data[index + 1], imageData.data[index + 2])) score += 1;
+          }
+          columnScores.push({ x, score });
+        }
+
+        const activeThreshold = Math.max(2, (bottom - top + 1) * 0.18);
+        const segments = [];
+        let current = null;
+        columnScores.forEach(({ x, score }) => {
+          if (score >= activeThreshold) {
+            if (!current) current = { start: x, end: x, maxScore: score };
+            current.end = x;
+            current.maxScore = Math.max(current.maxScore, score);
+          } else if (current) {
+            segments.push(current);
+            current = null;
+          }
+        });
+        if (current) segments.push(current);
+
+        const cleaned = segments
+          .filter((segment) => segment.end - segment.start + 1 >= Math.max(3, width * 0.004))
+          .map((segment) => ({ ...segment, center: (segment.start + segment.end) / 2, width: segment.end - segment.start + 1 }));
+
+        allSegments.push(...cleaned);
+        rowDetails.push({ center, segments: cleaned });
+      });
+
+      if (allSegments.length < 3) return null;
+      const leftEdge = Math.min(...allSegments.map((segment) => segment.start));
+      const segmentWidth = Math.max(4, median(allSegments.map((segment) => segment.width)));
+      const gaps = [];
+      rowDetails.forEach((row) => {
+        row.segments.forEach((segment, index) => {
+          if (index > 0) {
+            const gap = segment.start - row.segments[index - 1].end;
+            if (gap > segmentWidth * 0.25 && gap < segmentWidth * 2.2) gaps.push(gap);
+          }
+        });
+      });
+      const smallGap = gaps.length ? median(gaps) : Math.max(4, segmentWidth * 0.28);
+      const blockGap = Math.max(smallGap * 2.2, segmentWidth * 0.75);
+      const pitch = (segmentWidth * 15 + smallGap * 12 + blockGap * 2) / 15;
+      const cellCenters = Array.from({ length: 15 }, (_, index) => {
+        const blockOffset = Math.floor(index / 5) * (blockGap - smallGap);
+        return leftEdge + segmentWidth / 2 + index * (segmentWidth + smallGap) + blockOffset;
+      });
+
+      const values = rowDetails.map((row) => {
+        let filled = 0;
+        cellCenters.forEach((cellX) => {
+          const sampleLeft = Math.round(cellX - Math.max(2, segmentWidth * 0.28));
+          const sampleRight = Math.round(cellX + Math.max(2, segmentWidth * 0.28));
+          let hits = 0;
+          let total = 0;
+          for (let y = Math.round(row.center - Math.max(5, height * 0.004)); y <= Math.round(row.center + Math.max(5, height * 0.004)); y += 1) {
+            if (y < 0 || y >= height) continue;
+            for (let x = sampleLeft; x <= sampleRight; x += 1) {
+              if (x < 0 || x >= width) continue;
+              const index = (y * width + x) * 4;
+              if (isAppraisalBarPixel(imageData.data[index], imageData.data[index + 1], imageData.data[index + 2])) hits += 1;
+              total += 1;
+            }
+          }
+          if (total && hits / total > 0.12) filled += 1;
+        });
+        return clampIv(filled);
+      });
+
+      return {
+        values,
+        debug: `cells: start=${Math.round(leftEdge)}, seg=${Math.round(segmentWidth)}, gap=${Math.round(smallGap)}, block=${Math.round(blockGap)}`
+      };
     }
 
     function detectIvBars(canvas) {
@@ -1329,6 +1457,16 @@
       const centers = inferThreeGaugeCenters(groups, height);
       if (centers.length !== 3) {
         return { success: false, message: "個体値ゲージを3本見つけられませんでした。評価画面全体が写ったスクショで試してください。" };
+      }
+
+      const cellResult = detectIvBarsByCells(imageData, width, height, centers);
+      if (cellResult) {
+        return {
+          success: true,
+          values: { attack: cellResult.values[0], defense: cellResult.values[1], stamina: cellResult.values[2] },
+          debug: cellResult.debug,
+          message: `ゲージ推定: 攻撃${cellResult.values[0]} / 防御${cellResult.values[1]} / HP${cellResult.values[2]}`
+        };
       }
 
       const bounds = centers.map((center) => colorBoundsForBand(imageData, width, height, center, Math.max(8, height * 0.006)));
@@ -1392,6 +1530,43 @@
       return scored.slice(0, 5).map((item) => item.pokemon);
     }
 
+    function pokemonSearchCandidates(query) {
+      const normalizedQuery = normalizeNameText(query);
+      if (!normalizedQuery) return [state.pokemon];
+      const exact = [];
+      const partial = [];
+      const fuzzy = [];
+      POKEMON.forEach((pokemon) => {
+        const names = [pokemon.name, pokemon.en].map(normalizeNameText);
+        if (names.some((name) => name === normalizedQuery)) exact.push(pokemon);
+        else if (names.some((name) => name.includes(normalizedQuery) || normalizedQuery.includes(name))) partial.push(pokemon);
+        else {
+          const score = Math.min(...names.map((name) => levenshtein(normalizedQuery, name)));
+          if (score <= Math.max(1, Math.floor(normalizedQuery.length * 0.35))) fuzzy.push({ pokemon, score });
+        }
+      });
+      return [...exact, ...partial, ...fuzzy.sort((a, b) => a.score - b.score).map((item) => item.pokemon)].slice(0, 20);
+    }
+
+    function populateScanPokemonOptions(candidates) {
+      elements.scanPokemonSelect.innerHTML = "";
+      const unique = [];
+      const seen = new Set();
+      candidates.forEach((pokemon) => {
+        const key = pokemon.sourceId || `${pokemon.id}:${pokemon.name}`;
+        if (!seen.has(key)) {
+          seen.add(key);
+          unique.push(pokemon);
+        }
+      });
+      unique.forEach((pokemon) => {
+        const option = document.createElement("option");
+        option.value = pokemon.sourceId || `${pokemon.id}:${pokemon.name}`;
+        option.textContent = `No.${pokemon.id} ${pokemon.name}`;
+        elements.scanPokemonSelect.appendChild(option);
+      });
+    }
+
     function cropNameArea(canvas) {
       const crop = document.createElement("canvas");
       crop.width = Math.round(canvas.width * 0.86);
@@ -1418,6 +1593,8 @@
 
       const nameCanvas = cropNameArea(canvas);
       const result = await Tesseract.recognize(nameCanvas, "jpn+eng", {
+        tessedit_pageseg_mode: "6",
+        preserve_interword_spaces: "1",
         logger: (event) => {
           if (event.status === "recognizing text") {
             setScanStatus(`OCR解析中... ${Math.round(event.progress * 100)}%`);
@@ -1434,21 +1611,16 @@
 
     function renderScanResult(ivResult, nameResult) {
       const values = ivResult.success ? ivResult.values : { attack: "", defense: "", stamina: "" };
-      elements.scanAttack.textContent = values.attack === "" ? "-" : values.attack;
-      elements.scanDefense.textContent = values.defense === "" ? "-" : values.defense;
-      elements.scanStamina.textContent = values.stamina === "" ? "-" : values.stamina;
+      elements.scanAttackInput.value = values.attack === "" ? 0 : values.attack;
+      elements.scanDefenseInput.value = values.defense === "" ? 0 : values.defense;
+      elements.scanStaminaInput.value = values.stamina === "" ? 0 : values.stamina;
+      elements.scanDebug.textContent = ivResult.debug || "";
       elements.applyScanButton.dataset.attack = values.attack;
       elements.applyScanButton.dataset.defense = values.defense;
       elements.applyScanButton.dataset.stamina = values.stamina;
 
-      elements.scanPokemonSelect.innerHTML = "";
       const candidates = nameResult.candidates?.length ? nameResult.candidates : [state.pokemon];
-      candidates.forEach((pokemon) => {
-        const option = document.createElement("option");
-        option.value = pokemon.sourceId || `${pokemon.id}:${pokemon.name}`;
-        option.textContent = `No.${pokemon.id} ${pokemon.name}`;
-        elements.scanPokemonSelect.appendChild(option);
-      });
+      populateScanPokemonOptions(candidates);
       elements.scanResult.classList.add("active");
     }
 
@@ -1487,9 +1659,9 @@
       const attack = elements.applyScanButton.dataset.attack;
       const defense = elements.applyScanButton.dataset.defense;
       const stamina = elements.applyScanButton.dataset.stamina;
-      if (attack !== "") elements.atkIv.value = clampIv(attack);
-      if (defense !== "") elements.defIv.value = clampIv(defense);
-      if (stamina !== "") elements.staIv.value = clampIv(stamina);
+      elements.atkIv.value = clampIv(elements.scanAttackInput.value || attack);
+      elements.defIv.value = clampIv(elements.scanDefenseInput.value || defense);
+      elements.staIv.value = clampIv(elements.scanStaminaInput.value || stamina);
       calculate();
       elements.manualTab.click();
     }
@@ -1691,6 +1863,14 @@
       }
     });
     elements.applyScanButton.addEventListener("click", applyScanResult);
+    elements.scanPokemonSearch.addEventListener("input", () => {
+      populateScanPokemonOptions(pokemonSearchCandidates(elements.scanPokemonSearch.value));
+    });
+    [elements.scanAttackInput, elements.scanDefenseInput, elements.scanStaminaInput].forEach((input) => {
+      input.addEventListener("change", () => {
+        input.value = clampIv(input.value);
+      });
+    });
     elements.clearScanButton.addEventListener("click", () => {
       elements.screenshotFile.value = "";
       elements.screenshotPreview.removeAttribute("src");
