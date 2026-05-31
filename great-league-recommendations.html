@@ -162,9 +162,32 @@
       align-items: start;
     }
 
+    .identity {
+      display: flex;
+      align-items: center;
+      min-width: 0;
+      gap: 12px;
+    }
+
+    .pokemon-art {
+      width: 72px;
+      height: 72px;
+      object-fit: contain;
+      flex: 0 0 auto;
+      border-radius: 8px;
+      background: linear-gradient(180deg, #f7faff, #edf2fb);
+      border: 1px solid var(--line);
+      padding: 5px;
+    }
+
+    .pokemon-art.is-hidden {
+      display: none;
+    }
+
     .name {
       display: grid;
       gap: 3px;
+      min-width: 0;
     }
 
     .name strong {
@@ -302,6 +325,13 @@
         flex-direction: column;
       }
     }
+
+    @media (max-width: 420px) {
+      .pokemon-art {
+        width: 60px;
+        height: 60px;
+      }
+    }
   </style>
 </head>
 <body>
@@ -404,7 +434,7 @@
       { name: "チャーレム", tier: "S", roles: ["初手", "対はがね"], cost: "high", moves: "カウンター / れいとうパンチ / ばくれつパンチ", strength: "高耐久のカウンター使いで、れいとうパンチによりひこう・くさにも圧がある。", caution: "XL育成が重く、フェアリー・ゴーストに弱い。" },
       { name: "レジスチル", tier: "S", roles: ["高耐久", "フィニッシャー"], cost: "high", moves: "ロックオン / でんじほう / きあいだま", strength: "圧倒的な耐久と高火力ゲージ技で、シールド差を活かしやすい。", caution: "レジェンド育成コストが高く、じめん・かくとう・ほのおに弱い。" },
       { name: "ベロリンガ", tier: "S", roles: ["交代先", "高耐久"], cost: "high", moves: "したでなめる / のしかかり / パワーウィップ", strength: "耐久・回転・範囲がまとまった安定交代先。", caution: "XLと限定技のハードルが高い。" },
-      { name: "マッギョ (ガラル)", tier: "S", roles: ["対ひこう", "対はがね"], cost: "mid", moves: "マッドショット / いわなだれ / じしん", strength: "じめん・いわの範囲が広く、ひこうとはがねを同時に見やすい。", caution: "みず・くさ・かくとうに弱い。" },
+      { name: "マッギョ (ガラル)", imageId: 10180, tier: "S", roles: ["対ひこう", "対はがね"], cost: "mid", moves: "マッドショット / いわなだれ / じしん", strength: "じめん・いわの範囲が広く、ひこうとはがねを同時に見やすい。", caution: "みず・くさ・かくとうに弱い。" },
       { name: "ヤミラミ", tier: "A", roles: ["交代先", "対ゴースト"], cost: "high", moves: "シャドークロー / イカサマ / おんがえし", strength: "弱点が少なく、交代先として対面を荒らしやすい。", caution: "XLとリトレーン個体の準備が重い。" },
       { name: "オーロット", tier: "A", roles: ["対みず", "対じめん"], cost: "mid", moves: "シャドークロー / タネばくだん / シャドーボール", strength: "みず・じめん・エスパーに強く、シャドークローの回転も優秀。", caution: "あく・ひこう・こおりに弱い。" },
       { name: "バルジーナ", tier: "A", roles: ["高耐久", "対ゴースト"], cost: "high", moves: "バークアウト / つばめがえし / あくのはどう", strength: "耐久が高く、ゴースト・エスパーへの役割が明確。", caution: "XL寄りで、フェアリー・でんき・こおりに弱い。" },
@@ -480,6 +510,11 @@
       return `${ivs.attack}/${ivs.defense}/${ivs.stamina}`;
     }
 
+    function pokemonImageUrl(item) {
+      const imageId = item.imageId || item.pokemon.id;
+      return `https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/${imageId}.png`;
+    }
+
     function buildItems() {
       return RECOMMENDATIONS.map((item) => {
         const pokemon = findPokemon(item.name);
@@ -539,9 +574,12 @@
         return `
           <article class="panel card">
             <div class="card-head">
-              <div class="name">
-                <strong>${item.name}</strong>
-                <span class="dex">No.${item.pokemon.id} / ${item.pokemon.en}</span>
+              <div class="identity">
+                <img class="pokemon-art" src="${pokemonImageUrl(item)}" alt="${item.name}" loading="lazy" onerror="this.classList.add('is-hidden')">
+                <div class="name">
+                  <strong>${item.name}</strong>
+                  <span class="dex">No.${item.pokemon.id} / ${item.pokemon.en}</span>
+                </div>
               </div>
               <div class="tier">${item.tier}</div>
             </div>
