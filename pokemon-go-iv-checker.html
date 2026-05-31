@@ -892,6 +892,7 @@
                     <option value="auto" selected>自動判定</option>
                     <option value="pattern1">パターン1: 標準レイアウト</option>
                     <option value="pattern2">パターン2: 低めの評価パネル</option>
+                    <option value="pattern3">パターン3: Galaxy S20</option>
                   </select>
                 </div>
                 <label class="file-action" for="screenshotFile">
@@ -1399,7 +1400,66 @@
       return { centers, blocks, score: totalWidth - gapBalance * 1000 };
     }
 
+    function inferGalaxyBlocksFromGroups(groups, width) {
+      const left = Math.round(median(groups.map((group) => group.bounds.minX)));
+      const widths = groups.map((group) => group.bounds.width).sort((a, b) => a - b);
+      const totalWidth = Math.round(widths[Math.floor(widths.length / 2)]);
+      const safeWidth = Math.max(Math.round(width * 0.22), Math.min(totalWidth, Math.round(width * 0.42)));
+      const gap = Math.max(3, Math.round(safeWidth * 0.025));
+      const blockWidth = Math.max(12, Math.round((safeWidth - gap * 2) / 3));
+      return [0, 1, 2].map((index) => ({
+        start: left + index * (blockWidth + gap),
+        end: left + index * (blockWidth + gap) + blockWidth - 1
+      }));
+    }
+
+    function chooseGalaxyGaugeLayout(imageData, width, height, groups, pattern) {
+      const candidates = groups
+        .filter((group) => group.center >= height * 0.62)
+        .filter((group) => group.bounds.width >= width * 0.18 && group.bounds.width <= width * 0.44)
+        .sort((a, b) => a.center - b.center);
+      let best = null;
+
+      for (let a = 0; a < candidates.length - 2; a += 1) {
+        for (let b = a + 1; b < candidates.length - 1; b += 1) {
+          for (let c = b + 1; c < candidates.length; c += 1) {
+            const selectedGroups = [candidates[a], candidates[b], candidates[c]];
+            const centers = selectedGroups.map((group) => group.center);
+            const gaps = [centers[1] - centers[0], centers[2] - centers[1]];
+            const averageGap = (gaps[0] + gaps[1]) / 2;
+            if (averageGap < height * 0.025 || averageGap > height * 0.075) continue;
+            const gapBalance = Math.abs(gaps[0] - gaps[1]) / averageGap;
+            if (gapBalance > 0.42) continue;
+
+            const groupWidths = selectedGroups.map((group) => group.bounds.width);
+            const widthMedian = median(groupWidths);
+            const widthBalance = Math.max(...groupWidths.map((groupWidth) => Math.abs(groupWidth - widthMedian) / Math.max(1, widthMedian)));
+            const inferredBlocks = inferGalaxyBlocksFromGroups(selectedGroups, width);
+            const detectedBlocks = appraisalBlockRanges(imageData, width, height, centers, pattern);
+            const blocks = detectedBlocks.length === 3 ? detectedBlocks : inferredBlocks;
+            const blockQualityBonus = detectedBlocks.length === 3 ? 0 : -80;
+            const score = 1000 - gapBalance * 620 - widthBalance * 190 + blockQualityBonus - Math.abs(averageGap - height * 0.043) * 1.1;
+
+            if (!best || score > best.score) {
+              best = {
+                centers,
+                blocks,
+                score,
+                method: detectedBlocks.length === 3 ? "detected-blocks" : "inferred-blocks",
+                selectedGroups,
+                gapBalance,
+                widthBalance
+              };
+            }
+          }
+        }
+      }
+
+      return best;
+    }
+
     function chooseGaugeLayout(imageData, width, height, groups, pattern) {
+      if (pattern === "pattern3") return chooseGalaxyGaugeLayout(imageData, width, height, groups, pattern);
       const centers = groups.map((group) => group.center).sort((a, b) => a - b);
       let best = null;
       for (let index = 0; index <= centers.length - 3; index += 1) {
@@ -1531,9 +1591,11 @@
         debug: [
           ...debugBase,
           `selected y=${layout.centers.map((center) => Math.round(center)).join("/")}`,
+          layout.method ? `layout ${layout.method} score ${Math.round(layout.score)}` : "",
+          layout.selectedGroups ? `selected groups: ${formatGroupsForDebug(layout.selectedGroups)}` : "",
           `blocks ${formatBlocksForDebug(layout.blocks)}`,
           blockResult.debug
-        ].join("\n"),
+        ].filter(Boolean).join("\n"),
         message: `ゲージ推定: 攻撃${blockResult.values[0]} / 防御${blockResult.values[1]} / HP${blockResult.values[2]}`
       };
     }
