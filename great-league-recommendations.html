@@ -143,6 +143,74 @@
       line-height: 1.7;
     }
 
+    .diagnosis {
+      padding: 16px;
+      margin-bottom: 16px;
+      display: grid;
+      gap: 14px;
+    }
+
+    .diagnosis h2 {
+      margin: 0;
+      font-size: 19px;
+      letter-spacing: 0;
+    }
+
+    .diagnosis-form {
+      display: grid;
+      grid-template-columns: minmax(180px, 1fr) auto;
+      gap: 10px;
+      align-items: end;
+    }
+
+    .diagnosis-result {
+      display: none;
+      border-top: 1px solid var(--line);
+      padding-top: 14px;
+    }
+
+    .diagnosis-result.active {
+      display: grid;
+      gap: 12px;
+    }
+
+    .diagnosis-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+    }
+
+    .diagnosis-score {
+      min-width: 64px;
+      height: 42px;
+      border-radius: 999px;
+      display: grid;
+      place-items: center;
+      background: #e9f8f2;
+      color: #166f51;
+      font-weight: 900;
+      border: 1px solid #bfead8;
+    }
+
+    .diagnosis-score.mid {
+      background: #fff7df;
+      color: #8a5b00;
+      border-color: #f3d47a;
+    }
+
+    .diagnosis-score.low {
+      background: #fff1f1;
+      color: #a33b3b;
+      border-color: #f0c2c2;
+    }
+
+    .diagnosis-note {
+      margin: 0;
+      color: var(--muted);
+      line-height: 1.7;
+    }
+
     .cards {
       display: grid;
       grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -320,6 +388,10 @@
         grid-template-columns: 1fr;
       }
 
+      .diagnosis-form {
+        grid-template-columns: 1fr;
+      }
+
       .topbar-inner {
         align-items: flex-start;
         flex-direction: column;
@@ -348,6 +420,19 @@
     <p class="summary">
       CP1500以下のスーパーリーグで採用しやすい候補を、役割・技範囲・耐久・育成コストで整理しています。理想個体はこのアプリ内のSCP順位で計算しています。
     </p>
+
+    <section class="panel diagnosis" aria-label="任意ポケモン診断">
+      <h2>任意ポケモン診断</h2>
+      <div class="diagnosis-form">
+        <div class="field">
+          <label for="diagnosisSearch">ポケモン名・図鑑番号・英語名</label>
+          <input id="diagnosisSearch" type="search" list="pokemonOptions" placeholder="例: ナマズン / whiscash / 340">
+          <datalist id="pokemonOptions"></datalist>
+        </div>
+        <button id="diagnosisButton" class="button primary" type="button">診断</button>
+      </div>
+      <div id="diagnosisResult" class="diagnosis-result"></div>
+    </section>
 
     <section class="panel filters" aria-label="絞り込み">
       <div class="field">
@@ -457,7 +542,11 @@
       roleFilter: document.querySelector("#roleFilter"),
       costFilter: document.querySelector("#costFilter"),
       sortBy: document.querySelector("#sortBy"),
-      cards: document.querySelector("#cards")
+      cards: document.querySelector("#cards"),
+      diagnosisSearch: document.querySelector("#diagnosisSearch"),
+      diagnosisButton: document.querySelector("#diagnosisButton"),
+      diagnosisResult: document.querySelector("#diagnosisResult"),
+      pokemonOptions: document.querySelector("#pokemonOptions")
     };
 
     function cpFor(pokemon, ivs, level) {
@@ -506,6 +595,24 @@
       return POKEMON.find((pokemon) => pokemon.name === name);
     }
 
+    function normalizeSearch(value) {
+      return value.trim().toLowerCase().replace(/\s+/g, "");
+    }
+
+    function searchPokemon(query) {
+      const normalized = normalizeSearch(query);
+      if (!normalized) return null;
+      return POKEMON.find((pokemon) => {
+        return normalizeSearch(pokemon.name) === normalized ||
+          normalizeSearch(pokemon.en) === normalized ||
+          String(pokemon.id) === normalized ||
+          normalizeSearch(pokemon.sourceId || "") === normalized;
+      }) || POKEMON.find((pokemon) => {
+        return normalizeSearch(pokemon.name).includes(normalized) ||
+          normalizeSearch(pokemon.en).includes(normalized);
+      });
+    }
+
     function ivText(ivs) {
       return `${ivs.attack}/${ivs.defense}/${ivs.stamina}`;
     }
@@ -513,6 +620,13 @@
     function pokemonImageUrl(item) {
       const imageId = item.imageId || item.pokemon.id;
       return `https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/${imageId}.png`;
+    }
+
+    function formatNumber(value, digits = 1) {
+      return new Intl.NumberFormat("ja-JP", {
+        maximumFractionDigits: digits,
+        minimumFractionDigits: digits
+      }).format(value);
     }
 
     function buildItems() {
@@ -528,6 +642,8 @@
     }
 
     const items = buildItems();
+    const topReference = items[0]?.best?.statProduct || 1;
+    const recommendedNames = new Set(items.map((item) => item.pokemon.sourceId || `${item.pokemon.id}:${item.pokemon.name}`));
 
     function populateRoles() {
       const roles = [...new Set(items.flatMap((item) => item.roles))].sort((a, b) => a.localeCompare(b, "ja"));
@@ -537,6 +653,90 @@
         option.textContent = role;
         elements.roleFilter.appendChild(option);
       });
+    }
+
+    function populatePokemonOptions() {
+      elements.pokemonOptions.innerHTML = POKEMON.map((pokemon) => {
+        const label = `No.${pokemon.id} ${pokemon.name} / ${pokemon.en}`;
+        return `<option value="${pokemon.name}" label="${label}"></option>`;
+      }).join("");
+    }
+
+    function classifyRatio(ratio) {
+      if (ratio >= 0.9) return { label: "高", className: "" };
+      if (ratio >= 0.82) return { label: "中", className: "mid" };
+      return { label: "低", className: "low" };
+    }
+
+    function statProfile(pokemon) {
+      const total = pokemon.attack + pokemon.defense + pokemon.stamina;
+      const attackShare = pokemon.attack / total;
+      const bulkShare = (pokemon.defense + pokemon.stamina) / total;
+      if (attackShare >= 0.36) return "攻撃寄りで、CP1500制限では耐久効率が伸びにくい傾向です。";
+      if (bulkShare >= 0.7) return "耐久寄りで、CP制限リーグでは種族値効率を活かしやすい傾向です。";
+      return "攻撃・耐久のバランス型で、実戦評価は技構成と役割に左右されやすいです。";
+    }
+
+    function buildDiagnosisComment(pokemon, best, ratio, isRecommended) {
+      const parts = [];
+      if (isRecommended) {
+        parts.push(`${pokemon.name}はおすすめ一覧にも入っている候補です。`);
+      } else if (ratio >= 0.9) {
+        parts.push(`${pokemon.name}はSCP効率だけ見るとスーパーリーグ向きの土台があります。`);
+      } else if (ratio >= 0.82) {
+        parts.push(`${pokemon.name}はCP1500には収まりますが、上位定番と比べると耐久効率はやや控えめです。`);
+      } else {
+        parts.push(`${pokemon.name}はスーパーリーグでは趣味寄りの候補です。明確な役割や技範囲がないと採用は難しめです。`);
+      }
+      parts.push(statProfile(pokemon));
+      if (best.level >= 45) parts.push("理想個体は高PL寄りなので、XLアメや育成コストに注意してください。");
+      if (best.cp < 1400) parts.push("理想個体でもCP1500に届きにくく、ステータス総量で不利になりやすいです。");
+      parts.push("この診断は種族値とSCP効率ベースです。実戦では技構成、限定技、シャドウ、環境相性で評価が変わります。");
+      return parts.join("");
+    }
+
+    function diagnosePokemon() {
+      const pokemon = searchPokemon(elements.diagnosisSearch.value);
+      elements.diagnosisResult.classList.add("active");
+      if (!pokemon) {
+        elements.diagnosisResult.innerHTML = '<p class="diagnosis-note">該当するポケモンが見つかりませんでした。名前、図鑑番号、英語名で入力してください。</p>';
+        return;
+      }
+
+      const rankings = rankPokemon(pokemon);
+      const best = rankings[0];
+      if (!best) {
+        elements.diagnosisResult.innerHTML = `<p class="diagnosis-note">${pokemon.name}はCP1500以下の候補を計算できませんでした。</p>`;
+        return;
+      }
+
+      const key = pokemon.sourceId || `${pokemon.id}:${pokemon.name}`;
+      const ratio = best.statProduct / topReference;
+      const score = classifyRatio(ratio);
+      const isRecommended = recommendedNames.has(key);
+      const checkerUrl = `./pokemon-go-iv-checker.html?pokemon=${encodeURIComponent(pokemon.sourceId || pokemon.name)}&league=great`;
+
+      elements.diagnosisResult.innerHTML = `
+        <div class="diagnosis-head">
+          <div class="identity">
+            <img class="pokemon-art" src="${pokemonImageUrl({ pokemon })}" alt="${pokemon.name}" loading="lazy" onerror="this.classList.add('is-hidden')">
+            <div class="name">
+              <strong>${pokemon.name}</strong>
+              <span class="dex">No.${pokemon.id} / ${pokemon.en}</span>
+            </div>
+          </div>
+          <div class="diagnosis-score ${score.className}">適性${score.label}</div>
+        </div>
+        <div class="facts">
+          <div class="fact"><b>理想個体</b><span>${ivText(best.ivs)}</span></div>
+          <div class="fact"><b>PL / CP</b><span>${best.level} / ${best.cp}</span></div>
+          <div class="fact"><b>基準比</b><span>${formatNumber(ratio * 100, 1)}%</span></div>
+        </div>
+        <p class="diagnosis-note">${buildDiagnosisComment(pokemon, best, ratio, isRecommended)}</p>
+        <div class="actions">
+          <a class="button primary" href="${checkerUrl}">チェッカーで見る</a>
+        </div>
+      `;
     }
 
     function filteredItems() {
@@ -604,10 +804,15 @@
     }
 
     populateRoles();
+    populatePokemonOptions();
     render();
     [elements.search, elements.roleFilter, elements.costFilter, elements.sortBy].forEach((element) => {
       element.addEventListener("input", render);
       element.addEventListener("change", render);
+    });
+    elements.diagnosisButton.addEventListener("click", diagnosePokemon);
+    elements.diagnosisSearch.addEventListener("keydown", (event) => {
+      if (event.key === "Enter") diagnosePokemon();
     });
   </script>
 </body>
