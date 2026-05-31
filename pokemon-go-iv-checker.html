@@ -528,6 +528,7 @@
       color: var(--muted);
       font-size: 12px;
       line-height: 1.45;
+      white-space: pre-wrap;
     }
 
     .scan-actions {
@@ -1435,6 +1436,21 @@
       };
     }
 
+    function formatGroupsForDebug(groups) {
+      if (!groups.length) return "none";
+      return groups.slice(0, 8).map((group) => {
+        const y = group.center ? Math.round(group.center) : `${group.start}-${group.end}`;
+        const widthText = group.bounds ? `w${group.bounds.width}` : "w-";
+        const maxText = typeof group.maxScore === "number" ? `max${Math.round(group.maxScore)}` : "max-";
+        return `y${y}/${widthText}/${maxText}`;
+      }).join(", ");
+    }
+
+    function formatBlocksForDebug(blocks) {
+      if (!blocks || !blocks.length) return "none";
+      return blocks.map((block) => `${block.start}-${block.end}`).join(", ");
+    }
+
     function detectIvBarsForPattern(canvas, pattern) {
       const context = canvas.getContext("2d", { willReadFrequently: true });
       const width = canvas.width;
@@ -1445,6 +1461,7 @@
       const rightLimit = Math.round(width * 0.52);
       const topLimit = Math.round(height * 0.38);
       const bottomLimit = Math.round(height * 0.94);
+      let peakRow = { y: topLimit, score: 0 };
 
       for (let y = topLimit; y <= bottomLimit; y += 1) {
         let score = 0;
@@ -1454,6 +1471,7 @@
             score += 1;
           }
         }
+        if (score > peakRow.score) peakRow = { y, score };
         rowScores.push({ y, score });
       }
 
@@ -1490,15 +1508,32 @@
       }).filter((group) => group.bounds && group.bounds.width > width * 0.08);
 
       const layout = chooseGaugeLayout(imageData, width, height, groups, pattern);
+      const debugBase = [
+        `${pattern}`,
+        `image ${width}x${height}`,
+        `scan x${leftLimit}-${rightLimit} y${topLimit}-${bottomLimit}`,
+        `threshold ${Math.round(threshold)} peak y${peakRow.y}/${peakRow.score}`,
+        `rowGroups raw ${rawGroups.length}, merged ${merged.length}, usable ${groups.length}`,
+        `usable: ${formatGroupsForDebug(groups)}`
+      ];
       if (!layout) {
-        return { success: false, message: "個体値ゲージを3本見つけられませんでした。評価画面全体が写ったスクショで試してください。" };
+        return {
+          success: false,
+          message: "個体値ゲージを3本見つけられませんでした。評価画面全体が写ったスクショで試してください。",
+          debug: debugBase.join("\n")
+        };
       }
 
       const blockResult = detectIvBarsByBlocks(imageData, width, height, layout.centers, layout.blocks, pattern);
       return {
         success: true,
         values: { attack: blockResult.values[0], defense: blockResult.values[1], stamina: blockResult.values[2] },
-        debug: `${pattern}: ${blockResult.debug}`,
+        debug: [
+          ...debugBase,
+          `selected y=${layout.centers.map((center) => Math.round(center)).join("/")}`,
+          `blocks ${formatBlocksForDebug(layout.blocks)}`,
+          blockResult.debug
+        ].join("\n"),
         message: `ゲージ推定: 攻撃${blockResult.values[0]} / 防御${blockResult.values[1]} / HP${blockResult.values[2]}`
       };
     }
@@ -1507,8 +1542,18 @@
       const patterns = selectedPattern === "auto" ? ["pattern1", "pattern2"] : [selectedPattern];
       const results = patterns.map((pattern) => detectIvBarsForPattern(canvas, pattern));
       const successful = results.find((result) => result.success);
-      if (successful) return successful;
-      return results[0] || { success: false, message: "個体値ゲージを3本見つけられませんでした。" };
+      if (successful) {
+        return {
+          ...successful,
+          debug: selectedPattern === "auto"
+            ? results.map((result) => `${result.success ? "OK" : "NG"}\n${result.debug || ""}`).join("\n\n")
+            : successful.debug
+        };
+      }
+      return {
+        ...(results[0] || { success: false, message: "個体値ゲージを3本見つけられませんでした。" }),
+        debug: results.map((result) => `NG\n${result.debug || ""}`).join("\n\n")
+      };
     }
 
     function normalizeNameText(value) {
@@ -1778,6 +1823,10 @@
 
       setScanStatus("個体値ゲージを解析しています...");
       const ivResult = detectIvBars(canvas, elements.scanPattern.value);
+      ivResult.debug = [
+        `source ${image.naturalWidth}x${image.naturalHeight} -> canvas ${canvas.width}x${canvas.height}`,
+        ivResult.debug || ""
+      ].filter(Boolean).join("\n");
       setScanStatus(ivResult.message);
 
       let nameResult = { candidates: [state.pokemon], message: "" };
