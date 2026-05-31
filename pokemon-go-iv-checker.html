@@ -1311,7 +1311,7 @@
       return sorted[Math.floor(sorted.length / 2)];
     }
 
-    function colorBoundsForBand(imageData, width, height, centerY, bandHeight, pattern) {
+    function colorBoundsForBand(imageData, width, height, centerY, bandHeight, pattern, includeTrack = false) {
       const top = Math.max(0, Math.round(centerY - bandHeight));
       const bottom = Math.min(height - 1, Math.round(centerY + bandHeight));
       const leftLimit = Math.round(width * 0.07);
@@ -1323,7 +1323,10 @@
       for (let y = top; y <= bottom; y += 1) {
         for (let x = leftLimit; x <= rightLimit; x += 1) {
           const index = (y * width + x) * 4;
-          if (isAppraisalFilledPixel(imageData.data[index], imageData.data[index + 1], imageData.data[index + 2], pattern)) {
+          const matched = includeTrack
+            ? isAppraisalTrackPixel(imageData.data[index], imageData.data[index + 1], imageData.data[index + 2], pattern)
+            : isAppraisalFilledPixel(imageData.data[index], imageData.data[index + 1], imageData.data[index + 2], pattern);
+          if (matched) {
             minX = Math.min(minX, x);
             maxX = Math.max(maxX, x);
             count += 1;
@@ -1549,11 +1552,7 @@
       return blocks.map((block) => `${block.start}-${block.end}`).join(", ");
     }
 
-    function detectIvBarsForPattern(canvas, pattern) {
-      const context = canvas.getContext("2d", { willReadFrequently: true });
-      const width = canvas.width;
-      const height = canvas.height;
-      const imageData = context.getImageData(0, 0, width, height);
+    function collectGaugeGroups(imageData, width, height, pattern, includeTrackRows) {
       const rowScores = [];
       const leftLimit = Math.round(width * 0.08);
       const rightLimit = Math.round(width * 0.52);
@@ -1565,9 +1564,10 @@
         let score = 0;
         for (let x = leftLimit; x <= rightLimit; x += 1) {
           const index = (y * width + x) * 4;
-          if (isAppraisalFilledPixel(imageData.data[index], imageData.data[index + 1], imageData.data[index + 2], pattern)) {
-            score += 1;
-          }
+          const matched = includeTrackRows
+            ? isAppraisalTrackPixel(imageData.data[index], imageData.data[index + 1], imageData.data[index + 2], pattern)
+            : isAppraisalFilledPixel(imageData.data[index], imageData.data[index + 1], imageData.data[index + 2], pattern);
+          if (matched) score += 1;
         }
         if (score > peakRow.score) peakRow = { y, score };
         rowScores.push({ y, score });
@@ -1601,18 +1601,56 @@
 
       const groups = merged.map((group) => {
         const center = (group.start + group.end) / 2;
-        const bounds = colorBoundsForBand(imageData, width, height, center, Math.max(6, (group.end - group.start) / 2 + 4), pattern);
+        const bounds = colorBoundsForBand(imageData, width, height, center, Math.max(6, (group.end - group.start) / 2 + 4), pattern, includeTrackRows);
         return { ...group, center, bounds };
       }).filter((group) => group.bounds && group.bounds.width > width * 0.08);
 
-      const layout = chooseGaugeLayout(imageData, width, height, groups, pattern);
+      return {
+        mode: includeTrackRows ? "track" : "filled",
+        leftLimit,
+        rightLimit,
+        topLimit,
+        bottomLimit,
+        threshold,
+        peakRow,
+        rawGroups,
+        merged,
+        groups
+      };
+    }
+
+    function formatGaugeScanDebug(scan) {
+      return [
+        `mode ${scan.mode}`,
+        `scan x${scan.leftLimit}-${scan.rightLimit} y${scan.topLimit}-${scan.bottomLimit}`,
+        `threshold ${Math.round(scan.threshold)} peak y${scan.peakRow.y}/${scan.peakRow.score}`,
+        `rowGroups raw ${scan.rawGroups.length}, merged ${scan.merged.length}, usable ${scan.groups.length}`,
+        `usable: ${formatGroupsForDebug(scan.groups)}`
+      ];
+    }
+
+    function detectIvBarsForPattern(canvas, pattern) {
+      const context = canvas.getContext("2d", { willReadFrequently: true });
+      const width = canvas.width;
+      const height = canvas.height;
+      const imageData = context.getImageData(0, 0, width, height);
+      const filledScan = collectGaugeGroups(imageData, width, height, pattern, false);
+      let activeScan = filledScan;
+      let layout = chooseGaugeLayout(imageData, width, height, filledScan.groups, pattern);
+      let trackScan = null;
+      if (!layout) {
+        trackScan = collectGaugeGroups(imageData, width, height, pattern, true);
+        const trackLayout = chooseGaugeLayout(imageData, width, height, trackScan.groups, pattern);
+        if (trackLayout) {
+          activeScan = trackScan;
+          layout = { ...trackLayout, method: trackLayout.method || "track-fallback" };
+        }
+      }
       const debugBase = [
         `${pattern}`,
         `image ${width}x${height}`,
-        `scan x${leftLimit}-${rightLimit} y${topLimit}-${bottomLimit}`,
-        `threshold ${Math.round(threshold)} peak y${peakRow.y}/${peakRow.score}`,
-        `rowGroups raw ${rawGroups.length}, merged ${merged.length}, usable ${groups.length}`,
-        `usable: ${formatGroupsForDebug(groups)}`
+        ...formatGaugeScanDebug(filledScan),
+        ...(trackScan ? formatGaugeScanDebug(trackScan) : [])
       ];
       if (!layout) {
         return {
