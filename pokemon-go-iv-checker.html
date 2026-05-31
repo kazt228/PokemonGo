@@ -1472,10 +1472,17 @@
     function detectIvBarsByBlocks(imageData, width, height, centers, blocks, pattern) {
       const bandHalfHeight = Math.max(6, Math.round(height * 0.0045));
       const filledColumnThreshold = pattern === "pattern3" ? 0.42 : 0.18;
+      const valueFromBlockFraction = (fraction) => {
+        if (pattern === "pattern3") {
+          return Math.max(0, Math.min(5, Math.floor(fraction * 5 + 0.15)));
+        }
+        return Math.max(0, Math.min(5, Math.round(fraction * 5)));
+      };
       const rowDebug = [];
       const values = centers.map((center) => {
         let redHits = 0;
         let redSamples = 0;
+        const blockValues = [];
         const total = blocks.reduce((sum, block) => {
           let rightMostOrange = null;
           for (let x = block.start; x <= block.end; x += 1) {
@@ -1495,11 +1502,13 @@
           }
           if (rightMostOrange === null) return sum;
           const fraction = Math.max(0, Math.min(1, (rightMostOrange - block.start + 1) / (block.end - block.start + 1)));
-          return sum + Math.max(0, Math.min(5, Math.round(fraction * 5)));
+          const value = valueFromBlockFraction(fraction);
+          blockValues.push(value);
+          return sum + value;
         }, 0);
         const redRatio = redSamples ? redHits / redSamples : 0;
         const corrected = pattern === "pattern3" && total >= 15 && redRatio < 0.08 ? 14 : total;
-        rowDebug.push(`y${Math.round(center)} red=${redRatio.toFixed(2)} ${total}->${corrected}`);
+        rowDebug.push(`y${Math.round(center)} red=${redRatio.toFixed(2)} blocks=${blockValues.join("+")} ${total}->${corrected}`);
         return corrected;
       });
       return {
