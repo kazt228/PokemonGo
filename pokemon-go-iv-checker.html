@@ -1471,8 +1471,12 @@
 
     function detectIvBarsByBlocks(imageData, width, height, centers, blocks, pattern) {
       const bandHalfHeight = Math.max(6, Math.round(height * 0.0045));
+      const filledColumnThreshold = pattern === "pattern3" ? 0.42 : 0.18;
+      const rowDebug = [];
       const values = centers.map((center) => {
-        return blocks.reduce((total, block) => {
+        let redHits = 0;
+        let redSamples = 0;
+        const total = blocks.reduce((sum, block) => {
           let rightMostOrange = null;
           for (let x = block.start; x <= block.end; x += 1) {
             let orangeHits = 0;
@@ -1480,19 +1484,27 @@
             for (let y = Math.round(center - bandHalfHeight); y <= Math.round(center + bandHalfHeight); y += 1) {
               if (y < 0 || y >= height) continue;
               const index = (y * width + x) * 4;
+              if (pattern === "pattern3") {
+                redSamples += 1;
+                if (isAppraisalRedPixel(imageData.data[index], imageData.data[index + 1], imageData.data[index + 2])) redHits += 1;
+              }
               if (isAppraisalFilledPixel(imageData.data[index], imageData.data[index + 1], imageData.data[index + 2], pattern)) orangeHits += 1;
               samples += 1;
             }
-            if (samples && orangeHits / samples > 0.18) rightMostOrange = x;
+            if (samples && orangeHits / samples > filledColumnThreshold) rightMostOrange = x;
           }
-          if (rightMostOrange === null) return total;
+          if (rightMostOrange === null) return sum;
           const fraction = Math.max(0, Math.min(1, (rightMostOrange - block.start + 1) / (block.end - block.start + 1)));
-          return total + Math.max(0, Math.min(5, Math.round(fraction * 5)));
+          return sum + Math.max(0, Math.min(5, Math.round(fraction * 5)));
         }, 0);
+        const redRatio = redSamples ? redHits / redSamples : 0;
+        const corrected = pattern === "pattern3" && total >= 15 && redRatio < 0.08 ? 14 : total;
+        rowDebug.push(`y${Math.round(center)} red=${redRatio.toFixed(2)} ${total}->${corrected}`);
+        return corrected;
       });
       return {
         values,
-        debug: `bars: y=${centers.map((center) => Math.round(center)).join("/")}, x=${blocks.map((block) => `${block.start}-${block.end}`).join(" ")}`
+        debug: `bars: y=${centers.map((center) => Math.round(center)).join("/")}, x=${blocks.map((block) => `${block.start}-${block.end}`).join(" ")}, fill>${filledColumnThreshold}${rowDebug.length ? `, ${rowDebug.join(", ")}` : ""}`
       };
     }
 
