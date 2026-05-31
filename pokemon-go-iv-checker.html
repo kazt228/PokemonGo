@@ -885,6 +885,14 @@
               <div class="upload-box">
                 <strong>評価画面のスクショを読み取る</strong>
                 <div class="note">ポケモンGOの評価画面で、ポケモン名と3本の個体値ゲージが写っている画像を選んでください。</div>
+                <div class="field">
+                  <label for="scanPattern">スクショパターン</label>
+                  <select id="scanPattern">
+                    <option value="auto" selected>自動判定</option>
+                    <option value="pattern1">パターン1: 標準レイアウト</option>
+                    <option value="pattern2">パターン2: 低めの評価パネル</option>
+                  </select>
+                </div>
                 <label class="file-action" for="screenshotFile">
                   スクショを選択
                   <input id="screenshotFile" type="file" accept="image/*">
@@ -1027,6 +1035,7 @@
       screenshotPreview: document.querySelector("#screenshotPreview"),
       scanStatus: document.querySelector("#scanStatus"),
       scanResult: document.querySelector("#scanResult"),
+      scanPattern: document.querySelector("#scanPattern"),
       scanPokemonSearch: document.querySelector("#scanPokemonSearch"),
       scanPokemonSelect: document.querySelector("#scanPokemonSelect"),
       scanAttackInput: document.querySelector("#scanAttackInput"),
@@ -1258,12 +1267,23 @@
       const max = Math.max(r, g, b);
       const min = Math.min(r, g, b);
       const saturation = max === 0 ? 0 : (max - min) / max;
-      return r > 145 && g > 45 && g < 215 && b < 140 && r > b * 1.35 && saturation > 0.32;
+      return r > 145 && g > 65 && g < 215 && b < 135 && r > b * 1.35 && g > b * 1.22 && saturation > 0.32;
     }
 
-    function isAppraisalTrackPixel(r, g, b) {
+    function isAppraisalRedPixel(r, g, b) {
+      const max = Math.max(r, g, b);
+      const min = Math.min(r, g, b);
+      const saturation = max === 0 ? 0 : (max - min) / max;
+      return r > 175 && r < 245 && g > 80 && g < 165 && b > 80 && b < 175 && Math.abs(g - b) < 35 && r > g * 1.18 && saturation > 0.22;
+    }
+
+    function isAppraisalFilledPixel(r, g, b, pattern) {
+      return isAppraisalBarPixel(r, g, b) || isAppraisalRedPixel(r, g, b);
+    }
+
+    function isAppraisalTrackPixel(r, g, b, pattern) {
       const grayTrack = r > 175 && r < 235 && g > 175 && g < 235 && b > 165 && b < 230 && Math.max(r, g, b) - Math.min(r, g, b) < 35;
-      return isAppraisalBarPixel(r, g, b) || grayTrack;
+      return isAppraisalFilledPixel(r, g, b, pattern) || grayTrack;
     }
 
     function median(values) {
@@ -1272,7 +1292,7 @@
       return sorted[Math.floor(sorted.length / 2)];
     }
 
-    function colorBoundsForBand(imageData, width, height, centerY, bandHeight) {
+    function colorBoundsForBand(imageData, width, height, centerY, bandHeight, pattern) {
       const top = Math.max(0, Math.round(centerY - bandHeight));
       const bottom = Math.min(height - 1, Math.round(centerY + bandHeight));
       const leftLimit = Math.round(width * 0.07);
@@ -1284,7 +1304,7 @@
       for (let y = top; y <= bottom; y += 1) {
         for (let x = leftLimit; x <= rightLimit; x += 1) {
           const index = (y * width + x) * 4;
-          if (isAppraisalBarPixel(imageData.data[index], imageData.data[index + 1], imageData.data[index + 2])) {
+          if (isAppraisalFilledPixel(imageData.data[index], imageData.data[index + 1], imageData.data[index + 2], pattern)) {
             minX = Math.min(minX, x);
             maxX = Math.max(maxX, x);
             count += 1;
@@ -1312,7 +1332,7 @@
       return groups;
     }
 
-    function appraisalBlockRanges(imageData, width, height, centers) {
+    function appraisalBlockRanges(imageData, width, height, centers, pattern) {
       const leftLimit = Math.round(width * 0.07);
       const rightLimit = Math.round(width * 0.58);
       const bandHalfHeight = Math.max(6, Math.round(height * 0.0045));
@@ -1323,7 +1343,7 @@
           for (let y = Math.round(center - bandHalfHeight); y <= Math.round(center + bandHalfHeight); y += 1) {
             if (y < 0 || y >= height) continue;
             const index = (y * width + x) * 4;
-            if (isAppraisalTrackPixel(imageData.data[index], imageData.data[index + 1], imageData.data[index + 2])) score += 1;
+            if (isAppraisalTrackPixel(imageData.data[index], imageData.data[index + 1], imageData.data[index + 2], pattern)) score += 1;
           }
         });
         scores.push({ x, score });
@@ -1342,33 +1362,53 @@
         });
         groups = merged;
       }
-      return groups.length >= 3 ? groups.slice(0, 3) : [];
+      const normalized = normalizeAppraisalBlocks(groups);
+      return normalized.length >= 3 ? normalized.slice(0, 3) : [];
     }
 
-    function scoreGaugeCenters(imageData, width, height, centers) {
+    function normalizeAppraisalBlocks(groups) {
+      const blocks = groups.map((group) => ({ ...group })).sort((a, b) => a.start - b.start);
+      if (blocks.length < 2) return blocks;
+      const widths = blocks.map((block) => block.end - block.start + 1).sort((a, b) => a - b);
+      const targetWidth = widths[Math.floor(widths.length / 2)];
+      const normalized = [];
+      blocks.forEach((block) => {
+        const blockWidth = block.end - block.start + 1;
+        if (targetWidth > 0 && blockWidth > targetWidth * 1.55 && normalized.length < 2) {
+          const gap = Math.max(4, Math.round(targetWidth * 0.06));
+          normalized.push({ ...block, end: block.start + targetWidth - 1 });
+          normalized.push({ ...block, start: block.start + targetWidth + gap, end: block.start + targetWidth * 2 + gap - 1 });
+        } else {
+          normalized.push(block);
+        }
+      });
+      return normalized.sort((a, b) => a.start - b.start);
+    }
+
+    function scoreGaugeCenters(imageData, width, height, centers, pattern) {
       if (centers.length !== 3) return null;
       const gaps = [centers[1] - centers[0], centers[2] - centers[1]];
       const averageGap = (gaps[0] + gaps[1]) / 2;
       if (averageGap < height * 0.025 || averageGap > height * 0.08) return null;
       const gapBalance = Math.abs(gaps[0] - gaps[1]) / averageGap;
       if (gapBalance > 0.35) return null;
-      const blocks = appraisalBlockRanges(imageData, width, height, centers);
+      const blocks = appraisalBlockRanges(imageData, width, height, centers, pattern);
       if (blocks.length !== 3) return null;
       const totalWidth = blocks.reduce((sum, block) => sum + block.end - block.start + 1, 0);
       return { centers, blocks, score: totalWidth - gapBalance * 1000 };
     }
 
-    function chooseGaugeLayout(imageData, width, height, groups) {
+    function chooseGaugeLayout(imageData, width, height, groups, pattern) {
       const centers = groups.map((group) => group.center).sort((a, b) => a - b);
       let best = null;
       for (let index = 0; index <= centers.length - 3; index += 1) {
-        const candidate = scoreGaugeCenters(imageData, width, height, centers.slice(index, index + 3));
+        const candidate = scoreGaugeCenters(imageData, width, height, centers.slice(index, index + 3), pattern);
         if (candidate && (!best || candidate.score > best.score)) best = candidate;
       }
       return best;
     }
 
-    function detectIvBarsByBlocks(imageData, width, height, centers, blocks) {
+    function detectIvBarsByBlocks(imageData, width, height, centers, blocks, pattern) {
       const bandHalfHeight = Math.max(6, Math.round(height * 0.0045));
       const values = centers.map((center) => {
         return blocks.reduce((total, block) => {
@@ -1379,7 +1419,7 @@
             for (let y = Math.round(center - bandHalfHeight); y <= Math.round(center + bandHalfHeight); y += 1) {
               if (y < 0 || y >= height) continue;
               const index = (y * width + x) * 4;
-              if (isAppraisalBarPixel(imageData.data[index], imageData.data[index + 1], imageData.data[index + 2])) orangeHits += 1;
+              if (isAppraisalFilledPixel(imageData.data[index], imageData.data[index + 1], imageData.data[index + 2], pattern)) orangeHits += 1;
               samples += 1;
             }
             if (samples && orangeHits / samples > 0.18) rightMostOrange = x;
@@ -1395,7 +1435,7 @@
       };
     }
 
-    function detectIvBars(canvas) {
+    function detectIvBarsForPattern(canvas, pattern) {
       const context = canvas.getContext("2d", { willReadFrequently: true });
       const width = canvas.width;
       const height = canvas.height;
@@ -1410,7 +1450,7 @@
         let score = 0;
         for (let x = leftLimit; x <= rightLimit; x += 1) {
           const index = (y * width + x) * 4;
-          if (isAppraisalBarPixel(imageData.data[index], imageData.data[index + 1], imageData.data[index + 2])) {
+          if (isAppraisalFilledPixel(imageData.data[index], imageData.data[index + 1], imageData.data[index + 2], pattern)) {
             score += 1;
           }
         }
@@ -1445,22 +1485,30 @@
 
       const groups = merged.map((group) => {
         const center = (group.start + group.end) / 2;
-        const bounds = colorBoundsForBand(imageData, width, height, center, Math.max(6, (group.end - group.start) / 2 + 4));
+        const bounds = colorBoundsForBand(imageData, width, height, center, Math.max(6, (group.end - group.start) / 2 + 4), pattern);
         return { ...group, center, bounds };
       }).filter((group) => group.bounds && group.bounds.width > width * 0.08);
 
-      const layout = chooseGaugeLayout(imageData, width, height, groups);
+      const layout = chooseGaugeLayout(imageData, width, height, groups, pattern);
       if (!layout) {
         return { success: false, message: "個体値ゲージを3本見つけられませんでした。評価画面全体が写ったスクショで試してください。" };
       }
 
-      const blockResult = detectIvBarsByBlocks(imageData, width, height, layout.centers, layout.blocks);
+      const blockResult = detectIvBarsByBlocks(imageData, width, height, layout.centers, layout.blocks, pattern);
       return {
         success: true,
         values: { attack: blockResult.values[0], defense: blockResult.values[1], stamina: blockResult.values[2] },
-        debug: blockResult.debug,
+        debug: `${pattern}: ${blockResult.debug}`,
         message: `ゲージ推定: 攻撃${blockResult.values[0]} / 防御${blockResult.values[1]} / HP${blockResult.values[2]}`
       };
+    }
+
+    function detectIvBars(canvas, selectedPattern = "auto") {
+      const patterns = selectedPattern === "auto" ? ["pattern1", "pattern2"] : [selectedPattern];
+      const results = patterns.map((pattern) => detectIvBarsForPattern(canvas, pattern));
+      const successful = results.find((result) => result.success);
+      if (successful) return successful;
+      return results[0] || { success: false, message: "個体値ゲージを3本見つけられませんでした。" };
     }
 
     function normalizeNameText(value) {
@@ -1483,6 +1531,21 @@
       return dp[a.length][b.length];
     }
 
+    function bestSubstringDistance(text, name) {
+      if (!text || !name) return 999;
+      if (text.includes(name)) return 0;
+      const minLength = Math.max(1, name.length - 2);
+      const maxLength = Math.min(text.length, name.length + 2);
+      let best = levenshtein(text, name);
+      for (let length = minLength; length <= maxLength; length += 1) {
+        for (let start = 0; start <= text.length - length; start += 1) {
+          best = Math.min(best, levenshtein(text.slice(start, start + length), name));
+          if (best === 0) return 0;
+        }
+      }
+      return best;
+    }
+
     function findPokemonCandidates(text) {
       const normalizedText = normalizeNameText(text);
       if (!normalizedText) return [state.pokemon];
@@ -1491,9 +1554,11 @@
         const names = [pokemon.name, pokemon.en].map(normalizeNameText);
         const bestScore = Math.min(...names.map((name) => {
           if (!name) return 999;
-          if (normalizedText.includes(name)) return 0;
+          const shortNamePenalty = normalizedText.length >= 6 && name.length <= 3 ? 3 : 0;
+          if (normalizedText.includes(name)) return shortNamePenalty;
           if (name.includes(normalizedText)) return 1;
-          return levenshtein(normalizedText.slice(0, Math.max(name.length + 2, 8)), name);
+          const distance = bestSubstringDistance(normalizedText, name);
+          return (distance / Math.max(1, name.length)) + shortNamePenalty + Math.max(0, 6 - name.length) * 0.08;
         }));
         return { pokemon, score: bestScore };
       }).sort((a, b) => a.score - b.score || a.pokemon.id - b.pokemon.id);
@@ -1541,9 +1606,9 @@
     function cropNameArea(canvas) {
       const crop = document.createElement("canvas");
       const sourceX = Math.round(canvas.width * 0.14);
-      const sourceY = Math.round(canvas.height * 0.36);
+      const sourceY = Math.round(canvas.height * 0.32);
       const sourceWidth = Math.round(canvas.width * 0.72);
-      const sourceHeight = Math.round(canvas.height * 0.075);
+      const sourceHeight = Math.round(canvas.height * 0.14);
       const scale = 3;
       crop.width = sourceWidth * scale;
       crop.height = sourceHeight * scale;
@@ -1564,7 +1629,7 @@
         const r = imageData.data[index];
         const g = imageData.data[index + 1];
         const b = imageData.data[index + 2];
-        const darkText = g < 135 && r < 145 && b < 145 && Math.abs(g - r) < 55;
+        const darkText = g < 150 && r < 145 && b < 150 && Math.abs(g - r) < 70;
         const value = darkText ? 0 : 255;
         imageData.data[index] = value;
         imageData.data[index + 1] = value;
@@ -1621,7 +1686,7 @@
       const canvas = imageToCanvas(image);
 
       setScanStatus("個体値ゲージを解析しています...");
-      const ivResult = detectIvBars(canvas);
+      const ivResult = detectIvBars(canvas, elements.scanPattern.value);
       setScanStatus(ivResult.message);
 
       let nameResult = { candidates: [state.pokemon], message: "" };
