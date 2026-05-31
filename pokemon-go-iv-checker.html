@@ -1157,6 +1157,23 @@
       calculate();
     }
 
+    function initializeFromQuery() {
+      const params = new URLSearchParams(window.location.search);
+      const pokemonParam = params.get("pokemon");
+      if (pokemonParam) {
+        const decoded = decodeURIComponent(pokemonParam);
+        const pokemon = POKEMON.find((candidate) =>
+          candidate.sourceId === decoded ||
+          candidate.name === decoded ||
+          String(candidate.id) === decoded
+        );
+        if (pokemon) state.pokemon = pokemon;
+      }
+
+      const leagueParam = params.get("league");
+      if (leagueParam && LEAGUES[leagueParam]) state.league = leagueParam;
+    }
+
     function renderSelectedPokemon() {
       elements.selected.textContent = `No.${state.pokemon.id} ${state.pokemon.name} (${state.pokemon.en})`;
     }
@@ -2187,6 +2204,7 @@
       }
     });
 
+    initializeFromQuery();
     renderSelectedPokemon();
     renderLeagueButtons();
     renderIvGauges();

@@ -1,0 +1,576 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>スーパーリーグおすすめポケモン</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --bg: #f5f7fb;
+      --panel: #ffffff;
+      --ink: #172033;
+      --muted: #65708a;
+      --line: #dbe2ef;
+      --blue: #2f6fed;
+      --green: #1f9d72;
+      --red: #d84b4b;
+      --yellow: #f2b43b;
+      --shadow: 0 16px 40px rgba(23, 32, 51, 0.08);
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background: var(--bg);
+      color: var(--ink);
+    }
+
+    button,
+    input,
+    select {
+      font: inherit;
+    }
+
+    .topbar {
+      background: #172033;
+      color: #fff;
+      border-bottom: 4px solid var(--yellow);
+    }
+
+    .topbar-inner {
+      max-width: 1180px;
+      margin: 0 auto;
+      padding: 18px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      min-width: 0;
+    }
+
+    .mark {
+      width: 38px;
+      height: 38px;
+      border-radius: 50%;
+      background: linear-gradient(#d84b4b 0 47%, #172033 47% 53%, #ffffff 53% 100%);
+      border: 3px solid #fff;
+      box-shadow: inset 0 0 0 3px #172033;
+      flex: 0 0 auto;
+      position: relative;
+    }
+
+    .mark::after {
+      content: "";
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      background: #fff;
+      border: 3px solid #172033;
+      position: absolute;
+      inset: 0;
+      margin: auto;
+    }
+
+    h1 {
+      margin: 0;
+      font-size: clamp(20px, 3vw, 30px);
+      line-height: 1.2;
+      letter-spacing: 0;
+    }
+
+    .toplink {
+      color: #d8e2f5;
+      text-decoration: none;
+      font-size: 14px;
+      white-space: nowrap;
+    }
+
+    main {
+      max-width: 1180px;
+      margin: 0 auto;
+      padding: 24px 18px 44px;
+    }
+
+    .panel {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      box-shadow: var(--shadow);
+    }
+
+    .filters {
+      padding: 16px;
+      display: grid;
+      grid-template-columns: minmax(180px, 1.5fr) minmax(150px, 1fr) minmax(150px, 1fr) minmax(150px, 1fr);
+      gap: 12px;
+      align-items: end;
+      margin-bottom: 16px;
+    }
+
+    .field {
+      display: grid;
+      gap: 6px;
+    }
+
+    label {
+      color: var(--muted);
+      font-size: 13px;
+      font-weight: 700;
+    }
+
+    input,
+    select {
+      min-height: 40px;
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      padding: 8px 10px;
+      background: #fff;
+      color: var(--ink);
+    }
+
+    .summary {
+      margin-bottom: 16px;
+      color: var(--muted);
+      line-height: 1.7;
+    }
+
+    .cards {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 14px;
+    }
+
+    .card {
+      padding: 16px;
+      display: grid;
+      gap: 12px;
+    }
+
+    .card-head {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      align-items: start;
+    }
+
+    .name {
+      display: grid;
+      gap: 3px;
+    }
+
+    .name strong {
+      font-size: 20px;
+      letter-spacing: 0;
+    }
+
+    .dex,
+    .meta {
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    .tier {
+      min-width: 42px;
+      height: 42px;
+      border-radius: 50%;
+      display: grid;
+      place-items: center;
+      background: #fff7df;
+      color: #8a5b00;
+      border: 1px solid #f3d47a;
+      font-weight: 900;
+    }
+
+    .chips {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+    }
+
+    .chip {
+      padding: 4px 8px;
+      border-radius: 999px;
+      background: #eef3ff;
+      color: #244c9a;
+      font-size: 12px;
+      font-weight: 800;
+    }
+
+    .chip.cost-high { background: #fff1f1; color: #a33b3b; }
+    .chip.cost-mid { background: #fff7df; color: #8a5b00; }
+    .chip.cost-low { background: #e9f8f2; color: #166f51; }
+
+    .facts {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      overflow: hidden;
+    }
+
+    .fact {
+      padding: 9px 10px;
+      background: #fbfcff;
+      border-right: 1px solid var(--line);
+      display: grid;
+      gap: 2px;
+    }
+
+    .fact:last-child { border-right: 0; }
+
+    .fact b {
+      font-size: 12px;
+      color: var(--muted);
+    }
+
+    .fact span {
+      font-weight: 800;
+      white-space: nowrap;
+    }
+
+    .moves,
+    .text {
+      color: var(--muted);
+      line-height: 1.7;
+      margin: 0;
+      font-size: 14px;
+    }
+
+    .actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+
+    .button {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 36px;
+      padding: 8px 11px;
+      border-radius: 6px;
+      border: 1px solid var(--line);
+      background: #fff;
+      color: var(--ink);
+      text-decoration: none;
+      font-weight: 800;
+      font-size: 13px;
+    }
+
+    .button.primary {
+      background: var(--blue);
+      color: #fff;
+      border-color: var(--blue);
+    }
+
+    .empty {
+      padding: 24px;
+      text-align: center;
+      color: var(--muted);
+    }
+
+    .source {
+      margin-top: 18px;
+      padding: 14px 16px;
+      color: var(--muted);
+      line-height: 1.7;
+      font-size: 13px;
+    }
+
+    .source a {
+      color: var(--blue);
+      font-weight: 800;
+    }
+
+    @media (max-width: 860px) {
+      .filters,
+      .cards {
+        grid-template-columns: 1fr;
+      }
+
+      .topbar-inner {
+        align-items: flex-start;
+        flex-direction: column;
+      }
+    }
+  </style>
+</head>
+<body>
+  <header class="topbar">
+    <div class="topbar-inner">
+      <div class="brand">
+        <div class="mark" aria-hidden="true"></div>
+        <h1>スーパーリーグおすすめポケモン</h1>
+      </div>
+      <a class="toplink" href="./index.html">ツール一覧</a>
+    </div>
+  </header>
+  <main>
+    <p class="summary">
+      CP1500以下のスーパーリーグで採用しやすい候補を、役割・技範囲・耐久・育成コストで整理しています。理想個体はこのアプリ内のSCP順位で計算しています。
+    </p>
+
+    <section class="panel filters" aria-label="絞り込み">
+      <div class="field">
+        <label for="search">検索</label>
+        <input id="search" type="search" placeholder="ポケモン名・役割・技で検索">
+      </div>
+      <div class="field">
+        <label for="roleFilter">役割</label>
+        <select id="roleFilter">
+          <option value="all">すべて</option>
+        </select>
+      </div>
+      <div class="field">
+        <label for="costFilter">育成コスト</label>
+        <select id="costFilter">
+          <option value="all">すべて</option>
+          <option value="low">低め</option>
+          <option value="mid">中</option>
+          <option value="high">高め</option>
+        </select>
+      </div>
+      <div class="field">
+        <label for="sortBy">並び順</label>
+        <select id="sortBy">
+          <option value="tier">おすすめ度</option>
+          <option value="rank">理想個体順位</option>
+          <option value="name">名前</option>
+        </select>
+      </div>
+    </section>
+
+    <section id="cards" class="cards" aria-live="polite"></section>
+
+    <section class="panel source">
+      評価基準は、CP1500以下というスーパーリーグのルール、PvPokeのGreat Leagueランキングにおける役割別評価、GameWithのスーパーリーグおすすめ、Hundo HunterのGreat League候補を参考にしています。
+      参考: <a href="https://pvpoke.com/rankings/all/1500/overall/" target="_blank" rel="noreferrer">PvPoke</a> /
+      <a href="https://pokemongo.gamewith.jp/article/show/135809" target="_blank" rel="noreferrer">GameWith</a> /
+      <a href="https://www.hundo-hunter.com/best/best-pokemon-for-great-league" target="_blank" rel="noreferrer">Hundo Hunter</a>
+    </section>
+  </main>
+
+  <script src="./pokemon-data.js"></script>
+  <script>
+    const CP_MULTIPLIERS = {
+      1: 0.094, 1.5: 0.135137432, 2: 0.16639787, 2.5: 0.192650919, 3: 0.21573247,
+      3.5: 0.236572661, 4: 0.25572005, 4.5: 0.273530381, 5: 0.29024988,
+      5.5: 0.306057377, 6: 0.3210876, 6.5: 0.335445036, 7: 0.34921268,
+      7.5: 0.362457751, 8: 0.37523559, 8.5: 0.387592406, 9: 0.39956728,
+      9.5: 0.411193551, 10: 0.42250001, 10.5: 0.432926419, 11: 0.44310755,
+      11.5: 0.4530599578, 12: 0.46279839, 12.5: 0.472336083, 13: 0.48168495,
+      13.5: 0.4908558, 14: 0.49985844, 14.5: 0.508701765, 15: 0.51739395,
+      15.5: 0.525942511, 16: 0.53435433, 16.5: 0.542635767, 17: 0.55079269,
+      17.5: 0.558830576, 18: 0.56675452, 18.5: 0.574569153, 19: 0.58227891,
+      19.5: 0.589887917, 20: 0.59740001, 20.5: 0.604823665, 21: 0.61215729,
+      21.5: 0.619404122, 22: 0.62656713, 22.5: 0.633649143, 23: 0.64065295,
+      23.5: 0.647580967, 24: 0.65443563, 24.5: 0.661219252, 25: 0.667934,
+      25.5: 0.674581896, 26: 0.68116492, 26.5: 0.687684904, 27: 0.69414365,
+      27.5: 0.70054287, 28: 0.70688421, 28.5: 0.713169109, 29: 0.71939909,
+      29.5: 0.725575614, 30: 0.7317, 30.5: 0.734741009, 31: 0.73776948,
+      31.5: 0.740785574, 32: 0.74378943, 32.5: 0.746781211, 33: 0.74976104,
+      33.5: 0.752729087, 34: 0.75568551, 34.5: 0.758630378, 35: 0.76156384,
+      35.5: 0.764486065, 36: 0.76739717, 36.5: 0.770297266, 37: 0.7731865,
+      37.5: 0.776064962, 38: 0.77893275, 38.5: 0.781790055, 39: 0.78463697,
+      39.5: 0.787473578, 40: 0.79030001, 40.5: 0.792803968, 41: 0.79530001,
+      41.5: 0.797803922, 42: 0.8003, 42.5: 0.802803892, 43: 0.8053,
+      43.5: 0.807803863, 44: 0.81029999, 44.5: 0.812803834, 45: 0.81529999,
+      45.5: 0.817803806, 46: 0.82029999, 46.5: 0.822803778, 47: 0.82529999,
+      47.5: 0.827803751, 48: 0.83029999, 48.5: 0.832803753, 49: 0.83529999,
+      49.5: 0.837803755, 50: 0.84029999, 50.5: 0.842803729, 51: 0.84529999
+    };
+
+    const RECOMMENDATIONS = [
+      { name: "エンペルト", tier: "SS", roles: ["初手", "対フェアリー"], cost: "mid", moves: "たきのぼり / ハイドロカノン / ドリルくちばし", strength: "はがね複合でフェアリーやひこうに強く、ハイドロカノンで圧力をかけやすい。", caution: "じめん・かくとうに弱く、ハイドロカノンは限定技。" },
+      { name: "ブルンゲル", tier: "SS", roles: ["交代先", "高耐久"], cost: "mid", moves: "たたりめ / なみのり / シャドーボール", strength: "耐久と技範囲が優秀で、環境に多いかくとう・ノーマル寄りの構築を崩しやすい。", caution: "あく・でんき・くさに弱い。" },
+      { name: "プクリン", tier: "SS", roles: ["初手", "対あく"], cost: "low", moves: "あまえる / スピードスター / こごえるかぜ", strength: "あまえるの削りが強く、ドラゴン・あく・かくとうに圧をかけられる。", caution: "はがね・どくに止まりやすい。" },
+      { name: "コノヨザル", tier: "SS", roles: ["初手", "フィニッシャー"], cost: "mid", moves: "カウンター / つじぎり / インファイト", strength: "カウンター持ちで広く戦え、ゴースト複合により通常のかくとうとは違う受け方ができる。", caution: "ひこう・フェアリー・エスパーには注意。" },
+      { name: "アーマーガア", tier: "S", roles: ["高耐久", "対くさ"], cost: "mid", moves: "エアスラッシュ / ゴッドバード / アイアンヘッド", strength: "耐性が多く、くさ・フェアリーへの受け性能が高い。", caution: "でんき・ほのおに弱い。" },
+      { name: "ベロベルト", tier: "S", roles: ["交代先", "高耐久"], cost: "mid", moves: "したでなめる / のしかかり / シャドーボール", strength: "技回転と耐久が安定し、ゴーストにも打点を持てる。", caution: "のしかかり運用は限定技が必要。" },
+      { name: "チルタリス", tier: "S", roles: ["初手", "対くさ"], cost: "low", moves: "りゅうのいぶき / ゴッドバード / ムーンフォース", strength: "高耐久のドラゴンで、くさ・みず・じめん相手に強い。", caution: "こおりとフェアリーが重い。" },
+      { name: "ドラピオン", tier: "S", roles: ["交代先", "対ゴースト"], cost: "mid", moves: "どくばり / アクアテール / かみくだく", strength: "弱点が少なく、回転の速い技でシールドを動かしやすい。", caution: "じめん技持ちに注意。" },
+      { name: "ファイアロー", tier: "S", roles: ["フィニッシャー", "対はがね"], cost: "high", moves: "やきつくす / そらをとぶ / ニトロチャージ", strength: "ニトロチャージ後の終盤性能が高く、はがね・くさを処理しやすい。", caution: "やきつくすのターン管理と限定技が重要。" },
+      { name: "ラグラージ", tier: "S", roles: ["対はがね", "フィニッシャー"], cost: "mid", moves: "マッドショット / ハイドロカノン / じしん", strength: "技回転が非常に速く、はがね・ほのお・いわに強い。", caution: "くさが二重弱点。ハイドロカノンは限定技。" },
+      { name: "マリルリ", tier: "S", roles: ["高耐久", "対ドラゴン"], cost: "high", moves: "あわ / れいとうビーム / じゃれつく", strength: "耐久が高く、みず・フェアリーの範囲で多くの相手を見られる。", caution: "XL育成になりやすく、どく・くさ・でんきに注意。" },
+      { name: "チャーレム", tier: "S", roles: ["初手", "対はがね"], cost: "high", moves: "カウンター / れいとうパンチ / ばくれつパンチ", strength: "高耐久のカウンター使いで、れいとうパンチによりひこう・くさにも圧がある。", caution: "XL育成が重く、フェアリー・ゴーストに弱い。" },
+      { name: "レジスチル", tier: "S", roles: ["高耐久", "フィニッシャー"], cost: "high", moves: "ロックオン / でんじほう / きあいだま", strength: "圧倒的な耐久と高火力ゲージ技で、シールド差を活かしやすい。", caution: "レジェンド育成コストが高く、じめん・かくとう・ほのおに弱い。" },
+      { name: "ベロリンガ", tier: "S", roles: ["交代先", "高耐久"], cost: "high", moves: "したでなめる / のしかかり / パワーウィップ", strength: "耐久・回転・範囲がまとまった安定交代先。", caution: "XLと限定技のハードルが高い。" },
+      { name: "マッギョ (ガラル)", tier: "S", roles: ["対ひこう", "対はがね"], cost: "mid", moves: "マッドショット / いわなだれ / じしん", strength: "じめん・いわの範囲が広く、ひこうとはがねを同時に見やすい。", caution: "みず・くさ・かくとうに弱い。" },
+      { name: "ヤミラミ", tier: "A", roles: ["交代先", "対ゴースト"], cost: "high", moves: "シャドークロー / イカサマ / おんがえし", strength: "弱点が少なく、交代先として対面を荒らしやすい。", caution: "XLとリトレーン個体の準備が重い。" },
+      { name: "オーロット", tier: "A", roles: ["対みず", "対じめん"], cost: "mid", moves: "シャドークロー / タネばくだん / シャドーボール", strength: "みず・じめん・エスパーに強く、シャドークローの回転も優秀。", caution: "あく・ひこう・こおりに弱い。" },
+      { name: "バルジーナ", tier: "A", roles: ["高耐久", "対ゴースト"], cost: "high", moves: "バークアウト / つばめがえし / あくのはどう", strength: "耐久が高く、ゴースト・エスパーへの役割が明確。", caution: "XL寄りで、フェアリー・でんき・こおりに弱い。" },
+      { name: "ナマズン", tier: "A", roles: ["対はがね", "対でんき"], cost: "low", moves: "マッドショット / どろばくだん / ねっとう", strength: "育成しやすく、じめん技の回転でシールド圧をかけやすい。", caution: "くさが二重弱点。" },
+      { name: "デンヂムシ", tier: "A", roles: ["対みず", "交代先"], cost: "low", moves: "ボルトチェンジ / シザークロス / ほうでん", strength: "みず・ひこうに強く、むし技であく・くさにも触れる。", caution: "ほのお・いわに弱い。" },
+      { name: "エアームド", tier: "A", roles: ["対くさ", "高耐久"], cost: "low", moves: "エアスラッシュ / ゴッドバード / ブレイブバード", strength: "耐性が多く、くさ・フェアリー・じめん寄りの相手を受けやすい。", caution: "でんき・ほのおに弱い。" },
+      { name: "ランターン", tier: "A", roles: ["対ひこう", "対みず"], cost: "mid", moves: "スパーク / なみのり / 10まんボルト", strength: "みず・でんき複合で、ひこうやみずに強く出られる。", caution: "くさ・じめんに弱い。" },
+      { name: "ドオー", tier: "A", roles: ["高耐久", "対フェアリー"], cost: "low", moves: "どくばり / どろばくだん / ストーンエッジ", strength: "耐久が高く、どく・じめん範囲でフェアリーやはがねに触れる。", caution: "みず・じめん・こおり・エスパーに注意。" },
+      { name: "ヌオー", tier: "A", roles: ["対でんき", "フィニッシャー"], cost: "low", moves: "マッドショット / アクアテール / ストーンエッジ", strength: "回転の速い技と広い範囲で、終盤の抜き性能がある。", caution: "くさが二重弱点。" }
+    ];
+
+    const POKEMON = window.POKEMON_DATA || [];
+    const TIER_SCORE = { SS: 0, S: 1, A: 2 };
+    const COST_LABEL = { low: "低め", mid: "中", high: "高め" };
+    const COST_CLASS = { low: "cost-low", mid: "cost-mid", high: "cost-high" };
+    const rankCache = new Map();
+
+    const elements = {
+      search: document.querySelector("#search"),
+      roleFilter: document.querySelector("#roleFilter"),
+      costFilter: document.querySelector("#costFilter"),
+      sortBy: document.querySelector("#sortBy"),
+      cards: document.querySelector("#cards")
+    };
+
+    function cpFor(pokemon, ivs, level) {
+      const cpm = CP_MULTIPLIERS[level];
+      return Math.max(10, Math.floor(((pokemon.attack + ivs.attack) * Math.sqrt(pokemon.defense + ivs.defense) * Math.sqrt(pokemon.stamina + ivs.stamina) * cpm * cpm) / 10));
+    }
+
+    function statsFor(pokemon, ivs, level) {
+      const cpm = CP_MULTIPLIERS[level];
+      const attack = (pokemon.attack + ivs.attack) * cpm;
+      const defense = (pokemon.defense + ivs.defense) * cpm;
+      const hp = Math.floor((pokemon.stamina + ivs.stamina) * cpm);
+      return { attack, defense, hp, cp: cpFor(pokemon, ivs, level), statProduct: attack * defense * hp };
+    }
+
+    function bestBuildForIvs(pokemon, ivs, maxLevel = 50) {
+      let best = null;
+      for (let level = 1; level <= maxLevel; level += 0.5) {
+        const stats = statsFor(pokemon, ivs, level);
+        if (stats.cp <= 1500 && (!best || stats.statProduct > best.statProduct)) {
+          best = { ...stats, level, ivs };
+        }
+      }
+      return best;
+    }
+
+    function rankPokemon(pokemon) {
+      const key = pokemon.sourceId || `${pokemon.id}:${pokemon.name}`;
+      if (rankCache.has(key)) return rankCache.get(key);
+      const rows = [];
+      for (let attack = 0; attack <= 15; attack += 1) {
+        for (let defense = 0; defense <= 15; defense += 1) {
+          for (let stamina = 0; stamina <= 15; stamina += 1) {
+            const build = bestBuildForIvs(pokemon, { attack, defense, stamina });
+            if (build) rows.push(build);
+          }
+        }
+      }
+      rows.sort((a, b) => b.statProduct - a.statProduct || b.cp - a.cp || a.attack - b.attack);
+      rows.forEach((row, index) => row.rank = index + 1);
+      rankCache.set(key, rows);
+      return rows;
+    }
+
+    function findPokemon(name) {
+      return POKEMON.find((pokemon) => pokemon.name === name);
+    }
+
+    function ivText(ivs) {
+      return `${ivs.attack}/${ivs.defense}/${ivs.stamina}`;
+    }
+
+    function buildItems() {
+      return RECOMMENDATIONS.map((item) => {
+        const pokemon = findPokemon(item.name);
+        const rankings = pokemon ? rankPokemon(pokemon) : [];
+        return {
+          ...item,
+          pokemon,
+          best: rankings[0] || null
+        };
+      }).filter((item) => item.pokemon && item.best);
+    }
+
+    const items = buildItems();
+
+    function populateRoles() {
+      const roles = [...new Set(items.flatMap((item) => item.roles))].sort((a, b) => a.localeCompare(b, "ja"));
+      roles.forEach((role) => {
+        const option = document.createElement("option");
+        option.value = role;
+        option.textContent = role;
+        elements.roleFilter.appendChild(option);
+      });
+    }
+
+    function filteredItems() {
+      const query = elements.search.value.trim().toLowerCase();
+      const role = elements.roleFilter.value;
+      const cost = elements.costFilter.value;
+      return items.filter((item) => {
+        const haystack = [
+          item.name,
+          item.pokemon.en,
+          item.tier,
+          item.moves,
+          item.strength,
+          item.caution,
+          ...item.roles
+        ].join(" ").toLowerCase();
+        return (!query || haystack.includes(query)) &&
+          (role === "all" || item.roles.includes(role)) &&
+          (cost === "all" || item.cost === cost);
+      }).sort((a, b) => {
+        if (elements.sortBy.value === "name") return a.name.localeCompare(b.name, "ja");
+        if (elements.sortBy.value === "rank") return a.best.rank - b.best.rank;
+        return TIER_SCORE[a.tier] - TIER_SCORE[b.tier] || a.best.rank - b.best.rank;
+      });
+    }
+
+    function render() {
+      const rows = filteredItems();
+      if (!rows.length) {
+        elements.cards.innerHTML = '<div class="panel empty">条件に合うポケモンがありません。</div>';
+        return;
+      }
+      elements.cards.innerHTML = rows.map((item) => {
+        const checkerUrl = `./pokemon-go-iv-checker.html?pokemon=${encodeURIComponent(item.pokemon.sourceId || item.pokemon.name)}&league=great`;
+        return `
+          <article class="panel card">
+            <div class="card-head">
+              <div class="name">
+                <strong>${item.name}</strong>
+                <span class="dex">No.${item.pokemon.id} / ${item.pokemon.en}</span>
+              </div>
+              <div class="tier">${item.tier}</div>
+            </div>
+            <div class="chips">
+              ${item.roles.map((role) => `<span class="chip">${role}</span>`).join("")}
+              <span class="chip ${COST_CLASS[item.cost]}">育成${COST_LABEL[item.cost]}</span>
+            </div>
+            <div class="facts">
+              <div class="fact"><b>理想個体</b><span>${ivText(item.best.ivs)}</span></div>
+              <div class="fact"><b>PL / CP</b><span>${item.best.level} / ${item.best.cp}</span></div>
+              <div class="fact"><b>SCP順位</b><span>${item.best.rank}位</span></div>
+            </div>
+            <p class="moves"><b>推奨技:</b> ${item.moves}</p>
+            <p class="text">${item.strength}</p>
+            <p class="text"><b>注意:</b> ${item.caution}</p>
+            <div class="actions">
+              <a class="button primary" href="${checkerUrl}">チェッカーで見る</a>
+            </div>
+          </article>
+        `;
+      }).join("");
+    }
+
+    populateRoles();
+    render();
+    [elements.search, elements.roleFilter, elements.costFilter, elements.sortBy].forEach((element) => {
+      element.addEventListener("input", render);
+      element.addEventListener("change", render);
+    });
+  </script>
+</body>
+</html>

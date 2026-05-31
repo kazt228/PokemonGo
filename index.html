@@ -3,10 +3,145 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta http-equiv="refresh" content="0; url=./pokemon-go-iv-checker.html">
-  <title>Pokemon GO 個体値ランクチェッカー</title>
+  <title>Pokemon GO ツール</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --bg: #f5f7fb;
+      --panel: #ffffff;
+      --ink: #172033;
+      --muted: #65708a;
+      --line: #dbe2ef;
+      --blue: #2f6fed;
+      --yellow: #f2b43b;
+      --shadow: 0 16px 40px rgba(23, 32, 51, 0.08);
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background: var(--bg);
+      color: var(--ink);
+    }
+
+    .topbar {
+      background: #172033;
+      color: #fff;
+      border-bottom: 4px solid var(--yellow);
+    }
+
+    .topbar-inner {
+      max-width: 980px;
+      margin: 0 auto;
+      padding: 18px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .mark {
+      width: 38px;
+      height: 38px;
+      border-radius: 50%;
+      background: linear-gradient(#d84b4b 0 47%, #172033 47% 53%, #ffffff 53% 100%);
+      border: 3px solid #fff;
+      box-shadow: inset 0 0 0 3px #172033;
+      flex: 0 0 auto;
+      position: relative;
+    }
+
+    .mark::after {
+      content: "";
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      background: #fff;
+      border: 3px solid #172033;
+      position: absolute;
+      inset: 0;
+      margin: auto;
+    }
+
+    h1 {
+      margin: 0;
+      font-size: clamp(22px, 4vw, 34px);
+      letter-spacing: 0;
+    }
+
+    main {
+      max-width: 980px;
+      margin: 0 auto;
+      padding: 24px 18px 44px;
+    }
+
+    .tools {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 16px;
+    }
+
+    .tool-card {
+      display: grid;
+      gap: 12px;
+      padding: 18px;
+      min-height: 220px;
+      color: inherit;
+      text-decoration: none;
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      box-shadow: var(--shadow);
+    }
+
+    .tool-card h2 {
+      margin: 0;
+      font-size: 21px;
+      letter-spacing: 0;
+    }
+
+    .tool-card p {
+      margin: 0;
+      color: var(--muted);
+      line-height: 1.7;
+    }
+
+    .tool-card .action {
+      align-self: end;
+      justify-self: start;
+      padding: 10px 14px;
+      border-radius: 6px;
+      background: var(--blue);
+      color: #fff;
+      font-weight: 800;
+    }
+
+    @media (max-width: 720px) {
+      .tools { grid-template-columns: 1fr; }
+    }
+  </style>
 </head>
 <body>
-  <p><a href="./pokemon-go-iv-checker.html">Pokemon GO 個体値ランクチェッカーを開く</a></p>
+  <header class="topbar">
+    <div class="topbar-inner">
+      <div class="mark" aria-hidden="true"></div>
+      <h1>Pokemon GO ツール</h1>
+    </div>
+  </header>
+  <main>
+    <div class="tools">
+      <a class="tool-card" href="./pokemon-go-iv-checker.html">
+        <h2>個体値ランクチェッカー</h2>
+        <p>CP制限リーグ向けに、個体値ごとの順位、最適PL、最終CP、進化系での順位を確認できます。</p>
+        <span class="action">開く</span>
+      </a>
+      <a class="tool-card" href="./great-league-recommendations.html">
+        <h2>スーパーリーグおすすめ</h2>
+        <p>スーパーリーグで活躍しやすいポケモンを、役割・育成コスト・推奨技・理想個体つきで探せます。</p>
+        <span class="action">開く</span>
+      </a>
+    </div>
+  </main>
 </body>
 </html>
