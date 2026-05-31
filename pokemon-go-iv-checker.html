@@ -408,9 +408,123 @@
       border: 1px dashed #9aa8c0;
       border-radius: 8px;
       padding: 18px;
-      text-align: center;
       color: var(--muted);
       background: #fbfcff;
+    }
+
+    .upload-box strong {
+      display: block;
+      color: var(--ink);
+      margin-bottom: 8px;
+      text-align: center;
+    }
+
+    .file-action {
+      display: block;
+      width: 100%;
+      min-height: 44px;
+      border-radius: 6px;
+      border: 1px solid var(--blue);
+      color: var(--blue);
+      background: #edf3ff;
+      cursor: pointer;
+      font-weight: 800;
+      padding: 11px 12px;
+      text-align: center;
+      margin-top: 12px;
+    }
+
+    .file-action input {
+      display: none;
+    }
+
+    .screenshot-preview {
+      width: 100%;
+      max-height: 360px;
+      object-fit: contain;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #eef2f8;
+      margin-top: 12px;
+      display: none;
+    }
+
+    .screenshot-preview.active {
+      display: block;
+    }
+
+    .scan-status {
+      margin-top: 10px;
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.5;
+    }
+
+    .scan-result {
+      display: none;
+      margin-top: 12px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #fff;
+      overflow: hidden;
+    }
+
+    .scan-result.active {
+      display: block;
+    }
+
+    .scan-row {
+      display: grid;
+      grid-template-columns: 92px minmax(0, 1fr);
+      gap: 10px;
+      align-items: center;
+      padding: 10px 12px;
+      border-bottom: 1px solid var(--line);
+      font-size: 14px;
+    }
+
+    .scan-row:last-child {
+      border-bottom: 0;
+    }
+
+    .scan-label {
+      color: var(--muted);
+      font-weight: 800;
+      font-size: 12px;
+    }
+
+    .scan-value {
+      min-width: 0;
+      font-weight: 800;
+    }
+
+    .scan-select {
+      min-height: 38px;
+      padding: 7px 9px;
+    }
+
+    .scan-actions {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+      padding: 12px;
+      border-top: 1px solid var(--line);
+      background: #fbfcff;
+    }
+
+    .secondary {
+      min-height: 42px;
+      border-radius: 6px;
+      border: 1px solid var(--line);
+      background: #fff;
+      color: var(--muted);
+      cursor: pointer;
+      font-weight: 800;
+    }
+
+    .secondary:hover {
+      border-color: var(--blue);
+      color: var(--blue);
     }
 
     .primary {
@@ -665,6 +779,11 @@
         grid-template-columns: 1fr;
       }
 
+      .scan-actions,
+      .scan-row {
+        grid-template-columns: 1fr;
+      }
+
       .family-value {
         text-align: left;
       }
@@ -736,8 +855,38 @@
 
             <div id="imageInput" class="hidden">
               <div class="upload-box">
-                <strong>スクショ解析は次フェーズ</strong>
-                <div class="note">まずは計算精度を固めるため、MVPでは手動入力を実装しています。</div>
+                <strong>評価画面のスクショを読み取る</strong>
+                <div class="note">ポケモンGOの評価画面で、ポケモン名と3本の個体値ゲージが写っている画像を選んでください。</div>
+                <label class="file-action" for="screenshotFile">
+                  スクショを選択
+                  <input id="screenshotFile" type="file" accept="image/*">
+                </label>
+                <img id="screenshotPreview" class="screenshot-preview" alt="選択したスクリーンショットのプレビュー">
+                <div id="scanStatus" class="scan-status">画像を選択すると解析を開始します。</div>
+                <div id="scanResult" class="scan-result">
+                  <div class="scan-row">
+                    <div class="scan-label">ポケモン</div>
+                    <div class="scan-value">
+                      <select id="scanPokemonSelect" class="scan-select"></select>
+                    </div>
+                  </div>
+                  <div class="scan-row">
+                    <div class="scan-label">攻撃</div>
+                    <div class="scan-value" id="scanAttack">-</div>
+                  </div>
+                  <div class="scan-row">
+                    <div class="scan-label">防御</div>
+                    <div class="scan-value" id="scanDefense">-</div>
+                  </div>
+                  <div class="scan-row">
+                    <div class="scan-label">HP</div>
+                    <div class="scan-value" id="scanStamina">-</div>
+                  </div>
+                  <div class="scan-actions">
+                    <button id="applyScanButton" class="primary" type="button">この内容で反映</button>
+                    <button id="clearScanButton" class="secondary" type="button">やり直す</button>
+                  </div>
+                </div>
               </div>
             </div>
 
@@ -785,6 +934,7 @@
   </div>
 
   <script src="pokemon-data.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
   <script>
     const CP_MULTIPLIERS = {
       1: 0.094, 1.5: 0.135137432, 2: 0.16639787, 2.5: 0.192650919, 3: 0.21573247,
@@ -845,6 +995,16 @@
       manualInput: document.querySelector("#manualInput"),
       imageInput: document.querySelector("#imageInput"),
       ivGauges: document.querySelector("#ivGauges"),
+      screenshotFile: document.querySelector("#screenshotFile"),
+      screenshotPreview: document.querySelector("#screenshotPreview"),
+      scanStatus: document.querySelector("#scanStatus"),
+      scanResult: document.querySelector("#scanResult"),
+      scanPokemonSelect: document.querySelector("#scanPokemonSelect"),
+      scanAttack: document.querySelector("#scanAttack"),
+      scanDefense: document.querySelector("#scanDefense"),
+      scanStamina: document.querySelector("#scanStamina"),
+      applyScanButton: document.querySelector("#applyScanButton"),
+      clearScanButton: document.querySelector("#clearScanButton"),
       atkIv: document.querySelector("#atkIv"),
       defIv: document.querySelector("#defIv"),
       staIv: document.querySelector("#staIv"),
@@ -1017,6 +1177,321 @@
     function setIvValue(input, value) {
       input.value = clampIv(value);
       calculate();
+    }
+
+    function setScanStatus(message) {
+      elements.scanStatus.textContent = message;
+    }
+
+    function resetScanResult() {
+      elements.scanResult.classList.remove("active");
+      elements.scanPokemonSelect.innerHTML = "";
+      elements.scanAttack.textContent = "-";
+      elements.scanDefense.textContent = "-";
+      elements.scanStamina.textContent = "-";
+      elements.applyScanButton.dataset.attack = "";
+      elements.applyScanButton.dataset.defense = "";
+      elements.applyScanButton.dataset.stamina = "";
+    }
+
+    function loadImageFromFile(file) {
+      return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        const image = new Image();
+        image.onload = () => {
+          resolve(image);
+        };
+        image.onerror = () => {
+          reject(new Error("画像を読み込めませんでした。"));
+        };
+        reader.onload = () => {
+          image.src = reader.result;
+        };
+        reader.onerror = () => reject(new Error("画像を読み込めませんでした。"));
+        reader.readAsDataURL(file);
+      });
+    }
+
+    function imageToCanvas(image, maxWidth = 900) {
+      const scale = Math.min(1, maxWidth / image.naturalWidth);
+      const canvas = document.createElement("canvas");
+      canvas.width = Math.round(image.naturalWidth * scale);
+      canvas.height = Math.round(image.naturalHeight * scale);
+      const context = canvas.getContext("2d", { willReadFrequently: true });
+      context.drawImage(image, 0, 0, canvas.width, canvas.height);
+      return canvas;
+    }
+
+    function isAppraisalBarPixel(r, g, b) {
+      const max = Math.max(r, g, b);
+      const min = Math.min(r, g, b);
+      const saturation = max === 0 ? 0 : (max - min) / max;
+      return r > 145 && g > 45 && g < 215 && b < 140 && r > b * 1.35 && saturation > 0.32;
+    }
+
+    function median(values) {
+      if (!values.length) return 0;
+      const sorted = [...values].sort((a, b) => a - b);
+      return sorted[Math.floor(sorted.length / 2)];
+    }
+
+    function colorBoundsForBand(imageData, width, height, centerY, bandHeight) {
+      const top = Math.max(0, Math.round(centerY - bandHeight));
+      const bottom = Math.min(height - 1, Math.round(centerY + bandHeight));
+      const leftLimit = Math.round(width * 0.12);
+      const rightLimit = Math.round(width * 0.94);
+      let minX = width;
+      let maxX = 0;
+      let count = 0;
+
+      for (let y = top; y <= bottom; y += 1) {
+        for (let x = leftLimit; x <= rightLimit; x += 1) {
+          const index = (y * width + x) * 4;
+          if (isAppraisalBarPixel(imageData.data[index], imageData.data[index + 1], imageData.data[index + 2])) {
+            minX = Math.min(minX, x);
+            maxX = Math.max(maxX, x);
+            count += 1;
+          }
+        }
+      }
+
+      return count ? { minX, maxX, width: maxX - minX + 1, count } : null;
+    }
+
+    function inferThreeGaugeCenters(groups, height) {
+      const centers = groups.map((group) => group.center).sort((a, b) => a - b);
+      if (centers.length >= 3) return centers.slice(-3);
+      if (centers.length === 2) {
+        const gap = centers[1] - centers[0];
+        if (gap > height * 0.025 && gap < height * 0.14) {
+          const topCandidate = centers[0] - gap;
+          if (topCandidate > height * 0.38) return [topCandidate, centers[0], centers[1]];
+          return [centers[0], centers[1], centers[1] + gap];
+        }
+      }
+      return [];
+    }
+
+    function detectIvBars(canvas) {
+      const context = canvas.getContext("2d", { willReadFrequently: true });
+      const width = canvas.width;
+      const height = canvas.height;
+      const imageData = context.getImageData(0, 0, width, height);
+      const rowScores = [];
+      const leftLimit = Math.round(width * 0.12);
+      const rightLimit = Math.round(width * 0.94);
+      const topLimit = Math.round(height * 0.38);
+      const bottomLimit = Math.round(height * 0.94);
+
+      for (let y = topLimit; y <= bottomLimit; y += 1) {
+        let score = 0;
+        for (let x = leftLimit; x <= rightLimit; x += 1) {
+          const index = (y * width + x) * 4;
+          if (isAppraisalBarPixel(imageData.data[index], imageData.data[index + 1], imageData.data[index + 2])) {
+            score += 1;
+          }
+        }
+        rowScores.push({ y, score });
+      }
+
+      const threshold = Math.max(16, width * 0.055);
+      const rawGroups = [];
+      let current = null;
+      rowScores.forEach(({ y, score }) => {
+        if (score >= threshold) {
+          if (!current) current = { start: y, end: y, maxScore: score };
+          current.end = y;
+          current.maxScore = Math.max(current.maxScore, score);
+        } else if (current) {
+          rawGroups.push(current);
+          current = null;
+        }
+      });
+      if (current) rawGroups.push(current);
+
+      const merged = [];
+      rawGroups.forEach((group) => {
+        const previous = merged[merged.length - 1];
+        if (previous && group.start - previous.end <= Math.max(8, height * 0.01)) {
+          previous.end = group.end;
+          previous.maxScore = Math.max(previous.maxScore, group.maxScore);
+        } else {
+          merged.push({ ...group });
+        }
+      });
+
+      const groups = merged.map((group) => {
+        const center = (group.start + group.end) / 2;
+        const bounds = colorBoundsForBand(imageData, width, height, center, Math.max(6, (group.end - group.start) / 2 + 4));
+        return { ...group, center, bounds };
+      }).filter((group) => group.bounds && group.bounds.width > width * 0.08);
+
+      const centers = inferThreeGaugeCenters(groups, height);
+      if (centers.length !== 3) {
+        return { success: false, message: "個体値ゲージを3本見つけられませんでした。評価画面全体が写ったスクショで試してください。" };
+      }
+
+      const bounds = centers.map((center) => colorBoundsForBand(imageData, width, height, center, Math.max(8, height * 0.006)));
+      const visibleBounds = bounds.filter(Boolean);
+      if (!visibleBounds.length) {
+        return { success: false, message: "ゲージの色を検出できませんでした。" };
+      }
+
+      const startX = Math.max(0, median(visibleBounds.map((bound) => bound.minX)));
+      const longestFill = Math.max(...visibleBounds.map((bound) => bound.width));
+      const geometricWidth = Math.max(width * 0.38, (width * 0.875) - startX);
+      const fullWidth = Math.max(longestFill / 0.94, geometricWidth);
+      const values = bounds.map((bound) => {
+        if (!bound || bound.count < 20) return 0;
+        const fillWidth = Math.max(0, bound.maxX - startX + 1);
+        return clampIv(Math.round((fillWidth / fullWidth) * 15));
+      });
+
+      return {
+        success: true,
+        values: { attack: values[0], defense: values[1], stamina: values[2] },
+        message: `ゲージ推定: 攻撃${values[0]} / 防御${values[1]} / HP${values[2]}`
+      };
+    }
+
+    function normalizeNameText(value) {
+      return value
+        .toLowerCase()
+        .replace(/[\\s\\n\\r\\t。、・･'’"“”()（）\\[\\]【】_\\-]/g, "")
+        .replace(/[0-9]/g, "");
+    }
+
+    function levenshtein(a, b) {
+      const dp = Array.from({ length: a.length + 1 }, () => Array(b.length + 1).fill(0));
+      for (let i = 0; i <= a.length; i += 1) dp[i][0] = i;
+      for (let j = 0; j <= b.length; j += 1) dp[0][j] = j;
+      for (let i = 1; i <= a.length; i += 1) {
+        for (let j = 1; j <= b.length; j += 1) {
+          const cost = a[i - 1] === b[j - 1] ? 0 : 1;
+          dp[i][j] = Math.min(dp[i - 1][j] + 1, dp[i][j - 1] + 1, dp[i - 1][j - 1] + cost);
+        }
+      }
+      return dp[a.length][b.length];
+    }
+
+    function findPokemonCandidates(text) {
+      const normalizedText = normalizeNameText(text);
+      if (!normalizedText) return [state.pokemon];
+
+      const scored = POKEMON.map((pokemon) => {
+        const names = [pokemon.name, pokemon.en].map(normalizeNameText);
+        const bestScore = Math.min(...names.map((name) => {
+          if (!name) return 999;
+          if (normalizedText.includes(name)) return 0;
+          if (name.includes(normalizedText)) return 1;
+          return levenshtein(normalizedText.slice(0, Math.max(name.length + 2, 8)), name);
+        }));
+        return { pokemon, score: bestScore };
+      }).sort((a, b) => a.score - b.score || a.pokemon.id - b.pokemon.id);
+
+      return scored.slice(0, 5).map((item) => item.pokemon);
+    }
+
+    function cropNameArea(canvas) {
+      const crop = document.createElement("canvas");
+      crop.width = Math.round(canvas.width * 0.86);
+      crop.height = Math.round(canvas.height * 0.28);
+      const context = crop.getContext("2d");
+      context.drawImage(
+        canvas,
+        Math.round(canvas.width * 0.07),
+        Math.round(canvas.height * 0.04),
+        crop.width,
+        crop.height,
+        0,
+        0,
+        crop.width,
+        crop.height
+      );
+      return crop;
+    }
+
+    async function recognizePokemonName(canvas) {
+      if (!window.Tesseract) {
+        return { text: "", candidates: [state.pokemon], message: "OCRライブラリを読み込めませんでした。ポケモン名は手動で確認してください。" };
+      }
+
+      const nameCanvas = cropNameArea(canvas);
+      const result = await Tesseract.recognize(nameCanvas, "jpn+eng", {
+        logger: (event) => {
+          if (event.status === "recognizing text") {
+            setScanStatus(`OCR解析中... ${Math.round(event.progress * 100)}%`);
+          }
+        }
+      });
+      const text = result.data.text || "";
+      return {
+        text,
+        candidates: findPokemonCandidates(text),
+        message: text.trim() ? `OCR候補: ${text.trim().replace(/\\s+/g, " ")}` : "ポケモン名を読み取れませんでした。候補を確認してください。"
+      };
+    }
+
+    function renderScanResult(ivResult, nameResult) {
+      const values = ivResult.success ? ivResult.values : { attack: "", defense: "", stamina: "" };
+      elements.scanAttack.textContent = values.attack === "" ? "-" : values.attack;
+      elements.scanDefense.textContent = values.defense === "" ? "-" : values.defense;
+      elements.scanStamina.textContent = values.stamina === "" ? "-" : values.stamina;
+      elements.applyScanButton.dataset.attack = values.attack;
+      elements.applyScanButton.dataset.defense = values.defense;
+      elements.applyScanButton.dataset.stamina = values.stamina;
+
+      elements.scanPokemonSelect.innerHTML = "";
+      const candidates = nameResult.candidates?.length ? nameResult.candidates : [state.pokemon];
+      candidates.forEach((pokemon) => {
+        const option = document.createElement("option");
+        option.value = pokemon.sourceId || `${pokemon.id}:${pokemon.name}`;
+        option.textContent = `No.${pokemon.id} ${pokemon.name}`;
+        elements.scanPokemonSelect.appendChild(option);
+      });
+      elements.scanResult.classList.add("active");
+    }
+
+    async function handleScreenshotFile(file) {
+      resetScanResult();
+      setScanStatus("画像を読み込んでいます...");
+      const image = await loadImageFromFile(file);
+      elements.screenshotPreview.src = image.src;
+      elements.screenshotPreview.classList.add("active");
+      const canvas = imageToCanvas(image);
+
+      setScanStatus("個体値ゲージを解析しています...");
+      const ivResult = detectIvBars(canvas);
+      setScanStatus(ivResult.message);
+
+      let nameResult = { candidates: [state.pokemon], message: "" };
+      try {
+        setScanStatus(`${ivResult.message} / ポケモン名をOCR解析しています...`);
+        nameResult = await recognizePokemonName(canvas);
+      } catch (error) {
+        nameResult = {
+          candidates: [state.pokemon],
+          message: "OCR解析に失敗しました。ポケモン名は現在の選択を使うか、手動で変更してください。"
+        };
+      }
+
+      renderScanResult(ivResult, nameResult);
+      setScanStatus(`${ivResult.message} / ${nameResult.message}`);
+    }
+
+    function applyScanResult() {
+      const selectedSourceId = elements.scanPokemonSelect.value;
+      const pokemon = POKEMON.find((candidate) => (candidate.sourceId || `${candidate.id}:${candidate.name}`) === selectedSourceId);
+      if (pokemon) setPokemon(pokemon);
+
+      const attack = elements.applyScanButton.dataset.attack;
+      const defense = elements.applyScanButton.dataset.defense;
+      const stamina = elements.applyScanButton.dataset.stamina;
+      if (attack !== "") elements.atkIv.value = clampIv(attack);
+      if (defense !== "") elements.defIv.value = clampIv(defense);
+      if (stamina !== "") elements.staIv.value = clampIv(stamina);
+      calculate();
+      elements.manualTab.click();
     }
 
     function renderSuggestions() {
@@ -1204,6 +1679,24 @@
     elements.calculateButton.addEventListener("click", calculate);
     [elements.atkIv, elements.defIv, elements.staIv].forEach((input) => {
       input.addEventListener("change", calculate);
+    });
+    elements.screenshotFile.addEventListener("change", async () => {
+      const file = elements.screenshotFile.files?.[0];
+      if (!file) return;
+      try {
+        await handleScreenshotFile(file);
+      } catch (error) {
+        resetScanResult();
+        setScanStatus(error.message || "スクショ解析に失敗しました。");
+      }
+    });
+    elements.applyScanButton.addEventListener("click", applyScanResult);
+    elements.clearScanButton.addEventListener("click", () => {
+      elements.screenshotFile.value = "";
+      elements.screenshotPreview.removeAttribute("src");
+      elements.screenshotPreview.classList.remove("active");
+      resetScanResult();
+      setScanStatus("画像を選択すると解析を開始します。");
     });
 
     elements.manualTab.addEventListener("click", () => {
