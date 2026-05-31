@@ -1613,7 +1613,7 @@
     }
 
     function detectIvBars(canvas, selectedPattern = "auto") {
-      const patterns = selectedPattern === "auto" ? ["pattern1", "pattern2"] : [selectedPattern];
+      const patterns = selectedPattern === "auto" ? ["pattern1", "pattern2", "pattern3"] : [selectedPattern];
       const results = patterns.map((pattern) => detectIvBarsForPattern(canvas, pattern));
       const successful = results.find((result) => result.success);
       if (successful) {
