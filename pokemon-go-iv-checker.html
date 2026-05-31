@@ -1514,8 +1514,32 @@
     function normalizeNameText(value) {
       return value
         .toLowerCase()
-        .replace(/[\\s\\n\\r\\t。、・･'’"“”()（）\\[\\]【】_\\-]/g, "")
+        .replace(/[\s\n\r\t。、・･'’"“”()（）\[\]【】_\-—ー]/g, "")
         .replace(/[0-9]/g, "");
+    }
+
+    function foldKanaForMatching(value) {
+      return value
+        .replace(/[ガカ]/g, "カ")
+        .replace(/[ギキ]/g, "キ")
+        .replace(/[グク]/g, "ク")
+        .replace(/[ゲケ]/g, "ケ")
+        .replace(/[ゴコ]/g, "コ")
+        .replace(/[ザサ]/g, "サ")
+        .replace(/[ジシ]/g, "シ")
+        .replace(/[ズス]/g, "ス")
+        .replace(/[ゼセ]/g, "セ")
+        .replace(/[ゾソ]/g, "ソ")
+        .replace(/[ダタ]/g, "タ")
+        .replace(/[ヂチ]/g, "チ")
+        .replace(/[ヅツ]/g, "ツ")
+        .replace(/[デテ]/g, "テ")
+        .replace(/[ドト]/g, "ト")
+        .replace(/[バパハ]/g, "ハ")
+        .replace(/[ビピヒ]/g, "ヒ")
+        .replace(/[ブプフ]/g, "フ")
+        .replace(/[ベペヘ]/g, "ヘ")
+        .replace(/[ボポホ]/g, "ホ");
     }
 
     function levenshtein(a, b) {
@@ -1546,24 +1570,76 @@
       return best;
     }
 
-    function findPokemonCandidates(text) {
-      const normalizedText = normalizeNameText(text);
-      if (!normalizedText) return [state.pokemon];
+    function bestNameDistance(text, name) {
+      return Math.min(
+        bestSubstringDistance(text, name),
+        bestSubstringDistance(foldKanaForMatching(text), foldKanaForMatching(name)) + 0.15
+      );
+    }
 
-      const scored = POKEMON.map((pokemon) => {
+    function scorePokemonNameCandidates(text) {
+      const normalizedText = normalizeNameText(text);
+      if (!normalizedText) return [];
+
+      return POKEMON.map((pokemon) => {
         const names = [pokemon.name, pokemon.en].map(normalizeNameText);
         const bestScore = Math.min(...names.map((name) => {
           if (!name) return 999;
           const shortNamePenalty = normalizedText.length >= 6 && name.length <= 3 ? 3 : 0;
           if (normalizedText.includes(name)) return shortNamePenalty;
           if (name.includes(normalizedText)) return 1;
-          const distance = bestSubstringDistance(normalizedText, name);
+          const distance = bestNameDistance(normalizedText, name);
           return (distance / Math.max(1, name.length)) + shortNamePenalty + Math.max(0, 6 - name.length) * 0.08;
         }));
         return { pokemon, score: bestScore };
       }).sort((a, b) => a.score - b.score || a.pokemon.id - b.pokemon.id);
+    }
+
+    function findPokemonCandidates(text) {
+      const scored = scorePokemonNameCandidates(text);
+      if (!scored.length) return [state.pokemon];
 
       return scored.slice(0, 5).map((item) => item.pokemon);
+    }
+
+    function findPokemonCandidatesFromTexts(texts) {
+      const groups = texts
+        .map((entry) => typeof entry === "string" ? { text: entry, weight: 1 } : entry)
+        .filter((entry) => entry.text && entry.text.trim());
+      const scoredLists = groups
+        .map((entry) => ({
+          weight: entry.weight || 1,
+          items: scorePokemonNameCandidates(entry.text).slice(0, 24)
+        }))
+        .filter((entry) => entry.items.length);
+      if (!scoredLists.length) return [state.pokemon];
+
+      const candidateKeys = new Map();
+      scoredLists.forEach(({ items }) => {
+        items.forEach(({ pokemon }) => {
+          const key = pokemon.sourceId || `${pokemon.id}:${pokemon.name}`;
+          if (!candidateKeys.has(key)) candidateKeys.set(key, pokemon);
+        });
+      });
+
+      const totals = [];
+      candidateKeys.forEach((pokemon, key) => {
+        const score = scoredLists.reduce((sum, { weight, items }) => {
+          const foundIndex = items.findIndex((item) => (item.pokemon.sourceId || `${item.pokemon.id}:${item.pokemon.name}`) === key);
+          if (foundIndex === -1) return sum + 0.75 * weight;
+          return sum + (items[foundIndex].score + foundIndex * 0.02) * weight;
+        }, 0);
+        const bestScore = Math.min(...scoredLists.map(({ items }) => {
+          const found = items.find((item) => (item.pokemon.sourceId || `${item.pokemon.id}:${item.pokemon.name}`) === key);
+          return found ? found.score : 999;
+        }));
+        totals.push({ pokemon, score, bestScore });
+      });
+
+      return totals
+        .sort((a, b) => a.score - b.score || a.bestScore - b.bestScore || a.pokemon.id - b.pokemon.id)
+        .slice(0, 5)
+        .map((item) => item.pokemon);
     }
 
     function pokemonSearchCandidates(query) {
@@ -1603,12 +1679,12 @@
       });
     }
 
-    function cropNameArea(canvas) {
+    function cropAreaForOcr(canvas, sourceXRatio, sourceYRatio, sourceWidthRatio, sourceHeightRatio) {
       const crop = document.createElement("canvas");
-      const sourceX = Math.round(canvas.width * 0.14);
-      const sourceY = Math.round(canvas.height * 0.32);
-      const sourceWidth = Math.round(canvas.width * 0.72);
-      const sourceHeight = Math.round(canvas.height * 0.14);
+      const sourceX = Math.round(canvas.width * sourceXRatio);
+      const sourceY = Math.round(canvas.height * sourceYRatio);
+      const sourceWidth = Math.round(canvas.width * sourceWidthRatio);
+      const sourceHeight = Math.round(canvas.height * sourceHeightRatio);
       const scale = 3;
       crop.width = sourceWidth * scale;
       crop.height = sourceHeight * scale;
@@ -1639,25 +1715,40 @@
       return crop;
     }
 
+    function cropNameArea(canvas) {
+      return cropAreaForOcr(canvas, 0.14, 0.32, 0.72, 0.14);
+    }
+
+    function cropCatchTextArea(canvas) {
+      return cropAreaForOcr(canvas, 0.02, 0.83, 0.96, 0.13);
+    }
+
     async function recognizePokemonName(canvas) {
       if (!window.Tesseract) {
         return { text: "", candidates: [state.pokemon], message: "OCRライブラリを読み込めませんでした。ポケモン名は手動で確認してください。" };
       }
 
-      const nameCanvas = cropNameArea(canvas);
-      const result = await Tesseract.recognize(nameCanvas, "jpn+eng", {
+      const recognize = (targetCanvas, label) => Tesseract.recognize(targetCanvas, "jpn+eng", {
         tessedit_pageseg_mode: "6",
         preserve_interword_spaces: "1",
         logger: (event) => {
           if (event.status === "recognizing text") {
-            setScanStatus(`OCR解析中... ${Math.round(event.progress * 100)}%`);
+            setScanStatus(`${label}をOCR解析中... ${Math.round(event.progress * 100)}%`);
           }
         }
       });
-      const text = result.data.text || "";
+
+      const nameResult = await recognize(cropNameArea(canvas), "名前欄");
+      const catchTextResult = await recognize(cropCatchTextArea(canvas), "捕獲説明");
+      const nameText = nameResult.data.text || "";
+      const catchText = catchTextResult.data.text || "";
+      const text = [nameText, catchText].filter((value) => value.trim()).join("\n");
       return {
         text,
-        candidates: findPokemonCandidates(text),
+        candidates: findPokemonCandidatesFromTexts([
+          { text: nameText, weight: 1 },
+          { text: catchText, weight: 1.25 }
+        ]),
         message: text.trim() ? `OCR候補: ${text.trim().replace(/\\s+/g, " ")}` : "ポケモン名を読み取れませんでした。候補を確認してください。"
       };
     }
