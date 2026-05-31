@@ -1896,8 +1896,10 @@
       const canvas = imageToCanvas(image);
 
       setScanStatus("個体値ゲージを解析しています...");
-      const ivResult = detectIvBars(canvas, elements.scanPattern.value);
+      const selectedPattern = elements.scanPattern.value;
+      const ivResult = detectIvBars(canvas, selectedPattern);
       ivResult.debug = [
+        `selected ${selectedPattern}`,
         `source ${image.naturalWidth}x${image.naturalHeight} -> canvas ${canvas.width}x${canvas.height}`,
         ivResult.debug || ""
       ].filter(Boolean).join("\n");
@@ -2120,6 +2122,16 @@
       input.addEventListener("change", calculate);
     });
     elements.screenshotFile.addEventListener("change", async () => {
+      const file = elements.screenshotFile.files?.[0];
+      if (!file) return;
+      try {
+        await handleScreenshotFile(file);
+      } catch (error) {
+        resetScanResult();
+        setScanStatus(error.message || "スクショ解析に失敗しました。");
+      }
+    });
+    elements.scanPattern.addEventListener("change", async () => {
       const file = elements.screenshotFile.files?.[0];
       if (!file) return;
       try {
