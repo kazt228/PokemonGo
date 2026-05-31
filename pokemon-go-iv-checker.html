@@ -1261,24 +1261,22 @@
       return r > 145 && g > 45 && g < 215 && b < 140 && r > b * 1.35 && saturation > 0.32;
     }
 
+    function isAppraisalTrackPixel(r, g, b) {
+      const grayTrack = r > 175 && r < 235 && g > 175 && g < 235 && b > 165 && b < 230 && Math.max(r, g, b) - Math.min(r, g, b) < 35;
+      return isAppraisalBarPixel(r, g, b) || grayTrack;
+    }
+
     function median(values) {
       if (!values.length) return 0;
       const sorted = [...values].sort((a, b) => a - b);
       return sorted[Math.floor(sorted.length / 2)];
     }
 
-    function percentile(values, ratio) {
-      if (!values.length) return 0;
-      const sorted = [...values].sort((a, b) => a - b);
-      const index = Math.min(sorted.length - 1, Math.max(0, Math.round((sorted.length - 1) * ratio)));
-      return sorted[index];
-    }
-
     function colorBoundsForBand(imageData, width, height, centerY, bandHeight) {
       const top = Math.max(0, Math.round(centerY - bandHeight));
       const bottom = Math.min(height - 1, Math.round(centerY + bandHeight));
-      const leftLimit = Math.round(width * 0.12);
-      const rightLimit = Math.round(width * 0.94);
+      const leftLimit = Math.round(width * 0.07);
+      const rightLimit = Math.round(width * 0.58);
       let minX = width;
       let maxX = 0;
       let count = 0;
@@ -1297,106 +1295,103 @@
       return count ? { minX, maxX, width: maxX - minX + 1, count } : null;
     }
 
-    function inferThreeGaugeCenters(groups, height) {
-      const centers = groups.map((group) => group.center).sort((a, b) => a - b);
-      if (centers.length >= 3) return centers.slice(-3);
-      if (centers.length === 2) {
-        const gap = centers[1] - centers[0];
-        if (gap > height * 0.025 && gap < height * 0.14) {
-          const topCandidate = centers[0] - gap;
-          if (topCandidate > height * 0.38) return [topCandidate, centers[0], centers[1]];
-          return [centers[0], centers[1], centers[1] + gap];
+    function columnGroups(scores, threshold, minWidth) {
+      const groups = [];
+      let current = null;
+      scores.forEach(({ x, score }) => {
+        if (score >= threshold) {
+          if (!current) current = { start: x, end: x, maxScore: score };
+          current.end = x;
+          current.maxScore = Math.max(current.maxScore, score);
+        } else if (current) {
+          if (current.end - current.start + 1 >= minWidth) groups.push(current);
+          current = null;
         }
-      }
-      return [];
+      });
+      if (current && current.end - current.start + 1 >= minWidth) groups.push(current);
+      return groups;
     }
 
-    function detectIvBarsByCells(imageData, width, height, centers) {
-      const leftLimit = Math.round(width * 0.08);
-      const rightLimit = Math.round(width * 0.96);
-      const allSegments = [];
-      const rowDetails = [];
-
-      centers.forEach((center) => {
-        const top = Math.max(0, Math.round(center - Math.max(8, height * 0.006)));
-        const bottom = Math.min(height - 1, Math.round(center + Math.max(8, height * 0.006)));
-        const columnScores = [];
-        for (let x = leftLimit; x <= rightLimit; x += 1) {
-          let score = 0;
-          for (let y = top; y <= bottom; y += 1) {
-            const index = (y * width + x) * 4;
-            if (isAppraisalBarPixel(imageData.data[index], imageData.data[index + 1], imageData.data[index + 2])) score += 1;
-          }
-          columnScores.push({ x, score });
-        }
-
-        const activeThreshold = Math.max(2, (bottom - top + 1) * 0.18);
-        const segments = [];
-        let current = null;
-        columnScores.forEach(({ x, score }) => {
-          if (score >= activeThreshold) {
-            if (!current) current = { start: x, end: x, maxScore: score };
-            current.end = x;
-            current.maxScore = Math.max(current.maxScore, score);
-          } else if (current) {
-            segments.push(current);
-            current = null;
-          }
-        });
-        if (current) segments.push(current);
-
-        const cleaned = segments
-          .filter((segment) => segment.end - segment.start + 1 >= Math.max(3, width * 0.004))
-          .map((segment) => ({ ...segment, center: (segment.start + segment.end) / 2, width: segment.end - segment.start + 1 }));
-
-        allSegments.push(...cleaned);
-        rowDetails.push({ center, segments: cleaned });
-      });
-
-      if (allSegments.length < 3) return null;
-      const leftEdge = Math.min(...allSegments.map((segment) => segment.start));
-      const segmentWidth = Math.max(4, median(allSegments.map((segment) => segment.width)));
-      const gaps = [];
-      rowDetails.forEach((row) => {
-        row.segments.forEach((segment, index) => {
-          if (index > 0) {
-            const gap = segment.start - row.segments[index - 1].end;
-            if (gap > segmentWidth * 0.25 && gap < segmentWidth * 2.2) gaps.push(gap);
-          }
-        });
-      });
-      const smallGap = gaps.length ? median(gaps) : Math.max(4, segmentWidth * 0.28);
-      const blockGap = Math.max(smallGap * 2.2, segmentWidth * 0.75);
-      const pitch = (segmentWidth * 15 + smallGap * 12 + blockGap * 2) / 15;
-      const cellCenters = Array.from({ length: 15 }, (_, index) => {
-        const blockOffset = Math.floor(index / 5) * (blockGap - smallGap);
-        return leftEdge + segmentWidth / 2 + index * (segmentWidth + smallGap) + blockOffset;
-      });
-
-      const values = rowDetails.map((row) => {
-        let filled = 0;
-        cellCenters.forEach((cellX) => {
-          const sampleLeft = Math.round(cellX - Math.max(2, segmentWidth * 0.28));
-          const sampleRight = Math.round(cellX + Math.max(2, segmentWidth * 0.28));
-          let hits = 0;
-          let total = 0;
-          for (let y = Math.round(row.center - Math.max(5, height * 0.004)); y <= Math.round(row.center + Math.max(5, height * 0.004)); y += 1) {
+    function appraisalBlockRanges(imageData, width, height, centers) {
+      const leftLimit = Math.round(width * 0.07);
+      const rightLimit = Math.round(width * 0.58);
+      const bandHalfHeight = Math.max(6, Math.round(height * 0.0045));
+      const scores = [];
+      for (let x = leftLimit; x <= rightLimit; x += 1) {
+        let score = 0;
+        centers.forEach((center) => {
+          for (let y = Math.round(center - bandHalfHeight); y <= Math.round(center + bandHalfHeight); y += 1) {
             if (y < 0 || y >= height) continue;
-            for (let x = sampleLeft; x <= sampleRight; x += 1) {
-              if (x < 0 || x >= width) continue;
-              const index = (y * width + x) * 4;
-              if (isAppraisalBarPixel(imageData.data[index], imageData.data[index + 1], imageData.data[index + 2])) hits += 1;
-              total += 1;
-            }
+            const index = (y * width + x) * 4;
+            if (isAppraisalTrackPixel(imageData.data[index], imageData.data[index + 1], imageData.data[index + 2])) score += 1;
           }
-          if (total && hits / total > 0.12) filled += 1;
         });
-        return clampIv(filled);
-      });
+        scores.push({ x, score });
+      }
+      let groups = columnGroups(scores, Math.max(5, centers.length * 2), Math.max(12, width * 0.012));
+      if (groups.length > 3) {
+        const merged = [];
+        groups.forEach((group) => {
+          const previous = merged[merged.length - 1];
+          if (previous && group.start - previous.end <= Math.max(3, width * 0.006)) {
+            previous.end = group.end;
+            previous.maxScore = Math.max(previous.maxScore, group.maxScore);
+          } else {
+            merged.push({ ...group });
+          }
+        });
+        groups = merged;
+      }
+      return groups.length >= 3 ? groups.slice(0, 3) : [];
+    }
 
+    function scoreGaugeCenters(imageData, width, height, centers) {
+      if (centers.length !== 3) return null;
+      const gaps = [centers[1] - centers[0], centers[2] - centers[1]];
+      const averageGap = (gaps[0] + gaps[1]) / 2;
+      if (averageGap < height * 0.025 || averageGap > height * 0.08) return null;
+      const gapBalance = Math.abs(gaps[0] - gaps[1]) / averageGap;
+      if (gapBalance > 0.35) return null;
+      const blocks = appraisalBlockRanges(imageData, width, height, centers);
+      if (blocks.length !== 3) return null;
+      const totalWidth = blocks.reduce((sum, block) => sum + block.end - block.start + 1, 0);
+      return { centers, blocks, score: totalWidth - gapBalance * 1000 };
+    }
+
+    function chooseGaugeLayout(imageData, width, height, groups) {
+      const centers = groups.map((group) => group.center).sort((a, b) => a - b);
+      let best = null;
+      for (let index = 0; index <= centers.length - 3; index += 1) {
+        const candidate = scoreGaugeCenters(imageData, width, height, centers.slice(index, index + 3));
+        if (candidate && (!best || candidate.score > best.score)) best = candidate;
+      }
+      return best;
+    }
+
+    function detectIvBarsByBlocks(imageData, width, height, centers, blocks) {
+      const bandHalfHeight = Math.max(6, Math.round(height * 0.0045));
+      const values = centers.map((center) => {
+        return blocks.reduce((total, block) => {
+          let rightMostOrange = null;
+          for (let x = block.start; x <= block.end; x += 1) {
+            let orangeHits = 0;
+            let samples = 0;
+            for (let y = Math.round(center - bandHalfHeight); y <= Math.round(center + bandHalfHeight); y += 1) {
+              if (y < 0 || y >= height) continue;
+              const index = (y * width + x) * 4;
+              if (isAppraisalBarPixel(imageData.data[index], imageData.data[index + 1], imageData.data[index + 2])) orangeHits += 1;
+              samples += 1;
+            }
+            if (samples && orangeHits / samples > 0.18) rightMostOrange = x;
+          }
+          if (rightMostOrange === null) return total;
+          const fraction = Math.max(0, Math.min(1, (rightMostOrange - block.start + 1) / (block.end - block.start + 1)));
+          return total + Math.max(0, Math.min(5, Math.round(fraction * 5)));
+        }, 0);
+      });
       return {
         values,
-        debug: `cells: start=${Math.round(leftEdge)}, seg=${Math.round(segmentWidth)}, gap=${Math.round(smallGap)}, block=${Math.round(blockGap)}`
+        debug: `bars: y=${centers.map((center) => Math.round(center)).join("/")}, x=${blocks.map((block) => `${block.start}-${block.end}`).join(" ")}`
       };
     }
 
@@ -1406,8 +1401,8 @@
       const height = canvas.height;
       const imageData = context.getImageData(0, 0, width, height);
       const rowScores = [];
-      const leftLimit = Math.round(width * 0.12);
-      const rightLimit = Math.round(width * 0.94);
+      const leftLimit = Math.round(width * 0.08);
+      const rightLimit = Math.round(width * 0.52);
       const topLimit = Math.round(height * 0.38);
       const bottomLimit = Math.round(height * 0.94);
 
@@ -1454,41 +1449,17 @@
         return { ...group, center, bounds };
       }).filter((group) => group.bounds && group.bounds.width > width * 0.08);
 
-      const centers = inferThreeGaugeCenters(groups, height);
-      if (centers.length !== 3) {
+      const layout = chooseGaugeLayout(imageData, width, height, groups);
+      if (!layout) {
         return { success: false, message: "個体値ゲージを3本見つけられませんでした。評価画面全体が写ったスクショで試してください。" };
       }
 
-      const cellResult = detectIvBarsByCells(imageData, width, height, centers);
-      if (cellResult) {
-        return {
-          success: true,
-          values: { attack: cellResult.values[0], defense: cellResult.values[1], stamina: cellResult.values[2] },
-          debug: cellResult.debug,
-          message: `ゲージ推定: 攻撃${cellResult.values[0]} / 防御${cellResult.values[1]} / HP${cellResult.values[2]}`
-        };
-      }
-
-      const bounds = centers.map((center) => colorBoundsForBand(imageData, width, height, center, Math.max(8, height * 0.006)));
-      const visibleBounds = bounds.filter(Boolean);
-      if (!visibleBounds.length) {
-        return { success: false, message: "ゲージの色を検出できませんでした。" };
-      }
-
-      const startX = Math.max(0, median(visibleBounds.map((bound) => bound.minX)));
-      const longestFill = Math.max(...visibleBounds.map((bound) => bound.width));
-      const geometricWidth = Math.max(width * 0.38, (width * 0.875) - startX);
-      const fullWidth = Math.max(longestFill / 0.94, geometricWidth);
-      const values = bounds.map((bound) => {
-        if (!bound || bound.count < 20) return 0;
-        const fillWidth = Math.max(0, bound.maxX - startX + 1);
-        return clampIv(Math.round((fillWidth / fullWidth) * 15));
-      });
-
+      const blockResult = detectIvBarsByBlocks(imageData, width, height, layout.centers, layout.blocks);
       return {
         success: true,
-        values: { attack: values[0], defense: values[1], stamina: values[2] },
-        message: `ゲージ推定: 攻撃${values[0]} / 防御${values[1]} / HP${values[2]}`
+        values: { attack: blockResult.values[0], defense: blockResult.values[1], stamina: blockResult.values[2] },
+        debug: blockResult.debug,
+        message: `ゲージ推定: 攻撃${blockResult.values[0]} / 防御${blockResult.values[1]} / HP${blockResult.values[2]}`
       };
     }
 
@@ -1569,20 +1540,37 @@
 
     function cropNameArea(canvas) {
       const crop = document.createElement("canvas");
-      crop.width = Math.round(canvas.width * 0.86);
-      crop.height = Math.round(canvas.height * 0.28);
+      const sourceX = Math.round(canvas.width * 0.14);
+      const sourceY = Math.round(canvas.height * 0.36);
+      const sourceWidth = Math.round(canvas.width * 0.72);
+      const sourceHeight = Math.round(canvas.height * 0.075);
+      const scale = 3;
+      crop.width = sourceWidth * scale;
+      crop.height = sourceHeight * scale;
       const context = crop.getContext("2d");
       context.drawImage(
         canvas,
-        Math.round(canvas.width * 0.07),
-        Math.round(canvas.height * 0.04),
-        crop.width,
-        crop.height,
+        sourceX,
+        sourceY,
+        sourceWidth,
+        sourceHeight,
         0,
         0,
         crop.width,
         crop.height
       );
+      const imageData = context.getImageData(0, 0, crop.width, crop.height);
+      for (let index = 0; index < imageData.data.length; index += 4) {
+        const r = imageData.data[index];
+        const g = imageData.data[index + 1];
+        const b = imageData.data[index + 2];
+        const darkText = g < 135 && r < 145 && b < 145 && Math.abs(g - r) < 55;
+        const value = darkText ? 0 : 255;
+        imageData.data[index] = value;
+        imageData.data[index + 1] = value;
+        imageData.data[index + 2] = value;
+      }
+      context.putImageData(imageData, 0, 0);
       return crop;
     }
 
