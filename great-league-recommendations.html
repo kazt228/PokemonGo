@@ -163,6 +163,53 @@
       align-items: end;
     }
 
+    .diagnosis-picker {
+      position: relative;
+    }
+
+    .diagnosis-suggestions {
+      display: none;
+      position: absolute;
+      z-index: 20;
+      left: 0;
+      right: 0;
+      top: calc(100% + 4px);
+      max-height: 260px;
+      overflow: auto;
+      background: #fff;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      box-shadow: var(--shadow);
+    }
+
+    .diagnosis-suggestions.active {
+      display: block;
+    }
+
+    .diagnosis-suggestions button {
+      width: 100%;
+      border: 0;
+      border-bottom: 1px solid var(--line);
+      background: #fff;
+      color: var(--ink);
+      padding: 10px 12px;
+      display: flex;
+      justify-content: space-between;
+      gap: 10px;
+      text-align: left;
+      cursor: pointer;
+    }
+
+    .diagnosis-suggestions button:last-child {
+      border-bottom: 0;
+    }
+
+    .diagnosis-suggestions button:hover,
+    .diagnosis-suggestions button:focus {
+      background: #f6f8fc;
+      outline: none;
+    }
+
     .diagnosis-result {
       display: none;
       border-top: 1px solid var(--line);
@@ -424,10 +471,10 @@
     <section class="panel diagnosis" aria-label="任意ポケモン診断">
       <h2>任意ポケモン診断</h2>
       <div class="diagnosis-form">
-        <div class="field">
+        <div class="field diagnosis-picker">
           <label for="diagnosisSearch">ポケモン名・図鑑番号・英語名</label>
-          <input id="diagnosisSearch" type="search" list="pokemonOptions" placeholder="例: ナマズン / whiscash / 340">
-          <datalist id="pokemonOptions"></datalist>
+          <input id="diagnosisSearch" type="search" autocomplete="off" placeholder="例: ナマズン / whiscash / 340">
+          <div id="diagnosisSuggestions" class="diagnosis-suggestions"></div>
         </div>
         <button id="diagnosisButton" class="button primary" type="button">診断</button>
       </div>
@@ -546,7 +593,7 @@
       diagnosisSearch: document.querySelector("#diagnosisSearch"),
       diagnosisButton: document.querySelector("#diagnosisButton"),
       diagnosisResult: document.querySelector("#diagnosisResult"),
-      pokemonOptions: document.querySelector("#pokemonOptions")
+      diagnosisSuggestions: document.querySelector("#diagnosisSuggestions")
     };
 
     function cpFor(pokemon, ivs, level) {
@@ -613,6 +660,23 @@
       });
     }
 
+    function diagnosisCandidates(query) {
+      const normalized = normalizeSearch(query);
+      if (!normalized) return [];
+      const exact = [];
+      const prefix = [];
+      const partial = [];
+      POKEMON.forEach((pokemon) => {
+        const names = [pokemon.name, pokemon.en, String(pokemon.id)].map(normalizeSearch);
+        if (names.some((name) => name === normalized)) exact.push(pokemon);
+        else if (names.some((name) => name.startsWith(normalized))) prefix.push(pokemon);
+        else if (names.some((name) => name.includes(normalized))) partial.push(pokemon);
+      });
+      return [...exact, ...prefix, ...partial]
+        .filter((pokemon, index, rows) => rows.findIndex((row) => row.sourceId === pokemon.sourceId) === index)
+        .slice(0, 12);
+    }
+
     function ivText(ivs) {
       return `${ivs.attack}/${ivs.defense}/${ivs.stamina}`;
     }
@@ -655,11 +719,25 @@
       });
     }
 
-    function populatePokemonOptions() {
-      elements.pokemonOptions.innerHTML = POKEMON.map((pokemon) => {
-        const label = `No.${pokemon.id} ${pokemon.name} / ${pokemon.en}`;
-        return `<option value="${pokemon.name}" label="${label}"></option>`;
-      }).join("");
+    function hideDiagnosisSuggestions() {
+      elements.diagnosisSuggestions.classList.remove("active");
+    }
+
+    function renderDiagnosisSuggestions() {
+      const candidates = diagnosisCandidates(elements.diagnosisSearch.value);
+      if (!candidates.length) {
+        elements.diagnosisSuggestions.innerHTML = "";
+        hideDiagnosisSuggestions();
+        return;
+      }
+
+      elements.diagnosisSuggestions.innerHTML = candidates.map((pokemon) => `
+        <button type="button" data-source-id="${pokemon.sourceId}">
+          <span>${pokemon.name}</span>
+          <span class="dex">No.${pokemon.id} / ${pokemon.en}</span>
+        </button>
+      `).join("");
+      elements.diagnosisSuggestions.classList.add("active");
     }
 
     function classifyRatio(ratio) {
@@ -804,15 +882,31 @@
     }
 
     populateRoles();
-    populatePokemonOptions();
     render();
     [elements.search, elements.roleFilter, elements.costFilter, elements.sortBy].forEach((element) => {
       element.addEventListener("input", render);
       element.addEventListener("change", render);
     });
     elements.diagnosisButton.addEventListener("click", diagnosePokemon);
+    elements.diagnosisSearch.addEventListener("input", renderDiagnosisSuggestions);
+    elements.diagnosisSuggestions.addEventListener("click", (event) => {
+      const button = event.target.closest("button[data-source-id]");
+      if (!button) return;
+      const pokemon = POKEMON.find((candidate) => candidate.sourceId === button.dataset.sourceId);
+      if (!pokemon) return;
+      elements.diagnosisSearch.value = pokemon.name;
+      hideDiagnosisSuggestions();
+      diagnosePokemon();
+    });
     elements.diagnosisSearch.addEventListener("keydown", (event) => {
-      if (event.key === "Enter") diagnosePokemon();
+      if (event.key === "Enter") {
+        hideDiagnosisSuggestions();
+        diagnosePokemon();
+      }
+      if (event.key === "Escape") hideDiagnosisSuggestions();
+    });
+    document.addEventListener("click", (event) => {
+      if (!event.target.closest(".diagnosis-picker")) hideDiagnosisSuggestions();
     });
   </script>
 </body>
