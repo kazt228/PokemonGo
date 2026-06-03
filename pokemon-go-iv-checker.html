@@ -1683,9 +1683,7 @@
       if (successful) {
         return {
           ...successful,
-          debug: selectedPattern === "auto"
-            ? results.map((result) => `${result.success ? "OK" : "NG"}\n${result.debug || ""}`).join("\n\n")
-            : successful.debug
+          debug: ""
         };
       }
       return {
@@ -1962,11 +1960,13 @@
       setScanStatus("個体値ゲージを解析しています...");
       const selectedPattern = elements.scanPattern.value;
       const ivResult = detectIvBars(canvas, selectedPattern);
-      ivResult.debug = [
-        `selected ${selectedPattern}`,
-        `source ${image.naturalWidth}x${image.naturalHeight} -> canvas ${canvas.width}x${canvas.height}`,
-        ivResult.debug || ""
-      ].filter(Boolean).join("\n");
+      if (ivResult.debug) {
+        ivResult.debug = [
+          `selected ${selectedPattern}`,
+          `source ${image.naturalWidth}x${image.naturalHeight} -> canvas ${canvas.width}x${canvas.height}`,
+          ivResult.debug
+        ].join("\n");
+      }
       setScanStatus(ivResult.message);
 
       let nameResult = { candidates: [state.pokemon], message: "" };
