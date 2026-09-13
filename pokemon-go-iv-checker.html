@@ -2016,14 +2016,37 @@
       elements.applyScanButton.dataset.stamina = "";
     }
 
-    function loadImageFromFile(file) {
+    async function loadImageFromFile(file) {
+      if (window.createImageBitmap) {
+        const objectUrl = URL.createObjectURL(file);
+        try {
+          const bitmap = await createImageBitmap(file, { imageOrientation: "from-image" });
+          return {
+            src: objectUrl,
+            naturalWidth: bitmap.width,
+            naturalHeight: bitmap.height,
+            drawSource: bitmap,
+            decoder: "createImageBitmap"
+          };
+        } catch (error) {
+          URL.revokeObjectURL(objectUrl);
+        }
+      }
+
       return new Promise((resolve, reject) => {
         const reader = new FileReader();
         const image = new Image();
         image.onload = () => {
-          resolve(image);
+          resolve({
+            src: image.src,
+            naturalWidth: image.naturalWidth,
+            naturalHeight: image.naturalHeight,
+            drawSource: image,
+            decoder: "Image"
+          });
         };
         image.onerror = () => {
+          URL.revokeObjectURL(objectUrl);
           reject(new Error("画像を読み込めませんでした。"));
         };
         reader.onload = () => {
@@ -2040,8 +2063,20 @@
       canvas.width = Math.round(image.naturalWidth * scale);
       canvas.height = Math.round(image.naturalHeight * scale);
       const context = canvas.getContext("2d", { willReadFrequently: true });
-      context.drawImage(image, 0, 0, canvas.width, canvas.height);
+      context.drawImage(image.drawSource || image, 0, 0, canvas.width, canvas.height);
       return canvas;
+    }
+
+    function scanEnvironmentDebug(file, image, canvas) {
+      const userAgent = navigator.userAgent || "unknown";
+      const pixelRatio = window.devicePixelRatio || 1;
+      return [
+        `browser ${userAgent}`,
+        `dpr ${pixelRatio}`,
+        `file ${file.name} ${file.type || "unknown"} ${file.size}B`,
+        `decoder ${image.decoder || "unknown"}`,
+        `source ${image.naturalWidth}x${image.naturalHeight} -> canvas ${canvas.width}x${canvas.height}`
+      ];
     }
 
     function isAppraisalBarPixel(r, g, b) {
@@ -2731,7 +2766,7 @@
       if (ivResult.debug) {
         ivResult.debug = [
           `selected ${selectedPattern}`,
-          `source ${image.naturalWidth}x${image.naturalHeight} -> canvas ${canvas.width}x${canvas.height}`,
+          ...scanEnvironmentDebug(file, image, canvas),
           ivResult.debug
         ].join("\n");
       }
