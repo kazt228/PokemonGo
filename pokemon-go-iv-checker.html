@@ -555,6 +555,94 @@
       color: var(--blue);
     }
 
+    .batch-box {
+      margin-top: 16px;
+      border-top: 1px solid var(--line);
+      padding-top: 16px;
+    }
+
+    .batch-actions {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 8px;
+      margin-top: 10px;
+    }
+
+    .batch-status {
+      margin-top: 10px;
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.5;
+    }
+
+    .batch-table-wrap {
+      margin-top: 12px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      overflow: auto;
+      background: #fff;
+      max-height: 420px;
+      display: none;
+    }
+
+    .batch-table-wrap.active {
+      display: block;
+    }
+
+    .batch-table {
+      min-width: 960px;
+    }
+
+    .batch-table th,
+    .batch-table td {
+      font-size: 12px;
+      padding: 8px 10px;
+    }
+
+    .batch-table th:first-child,
+    .batch-table td:first-child,
+    .batch-table th:nth-child(2),
+    .batch-table td:nth-child(2),
+    .batch-table th:last-child,
+    .batch-table td:last-child {
+      text-align: left;
+    }
+
+    .batch-note {
+      max-width: 260px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .batch-edit,
+    .batch-iv-input {
+      min-height: 32px;
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      padding: 6px 8px;
+      background: #fff;
+      color: var(--ink);
+      font-size: 12px;
+    }
+
+    .batch-edit {
+      width: 150px;
+    }
+
+    .batch-ivs {
+      display: grid;
+      grid-template-columns: repeat(3, 42px);
+      gap: 4px;
+      align-items: center;
+    }
+
+    .batch-iv-input {
+      width: 42px;
+      text-align: center;
+      padding-inline: 4px;
+    }
+
     .primary {
       width: 100%;
       min-height: 46px;
@@ -709,6 +797,119 @@
       white-space: nowrap;
     }
 
+    .organizer {
+      margin-top: 14px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      overflow: hidden;
+      background: #fff;
+    }
+
+    .organizer-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 12px 14px;
+      border-bottom: 1px solid var(--line);
+      background: #f3f6fb;
+    }
+
+    .organizer-head h3 {
+      margin: 0;
+      font-size: 15px;
+      line-height: 1.3;
+    }
+
+    .organizer-verdict {
+      border-radius: 999px;
+      padding: 5px 10px;
+      color: #fff;
+      background: var(--blue);
+      font-size: 12px;
+      font-weight: 900;
+      white-space: nowrap;
+    }
+
+    .organizer-body {
+      display: grid;
+      gap: 12px;
+      padding: 14px;
+    }
+
+    .organizer-reasons {
+      display: grid;
+      gap: 8px;
+      margin: 0;
+      padding: 0;
+      list-style: none;
+      color: var(--muted);
+      font-size: 14px;
+      line-height: 1.5;
+    }
+
+    .organizer-reasons li {
+      padding-left: 18px;
+      position: relative;
+    }
+
+    .organizer-reasons li::before {
+      content: "";
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: var(--blue);
+      position: absolute;
+      left: 2px;
+      top: 0.68em;
+    }
+
+    .copy-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 8px;
+    }
+
+    .copy-item {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      gap: 8px;
+      align-items: center;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 10px;
+      background: #fbfcff;
+      min-width: 0;
+    }
+
+    .copy-text {
+      min-width: 0;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      font-weight: 800;
+      color: var(--ink);
+    }
+
+    .copy-button {
+      min-height: 32px;
+      border: 1px solid var(--blue);
+      border-radius: 6px;
+      background: #edf3ff;
+      color: var(--blue);
+      cursor: pointer;
+      font-size: 12px;
+      font-weight: 900;
+      padding: 6px 9px;
+      white-space: nowrap;
+    }
+
+    .copy-button.copied {
+      border-color: var(--green);
+      background: #e7f7f1;
+      color: var(--green);
+    }
+
     .ranking {
       margin-top: 18px;
       overflow: hidden;
@@ -803,13 +1004,15 @@
 
       .row,
       .stats,
-      .family-row {
+      .family-row,
+      .copy-grid {
         grid-template-columns: 1fr;
       }
 
       .scan-actions,
       .scan-row,
-      .scan-iv-controls {
+      .scan-iv-controls,
+      .batch-actions {
         grid-template-columns: 1fr;
       }
 
@@ -893,6 +1096,7 @@
                     <option value="pattern1">パターン1: 標準レイアウト</option>
                     <option value="pattern2">パターン2: 低めの評価パネル</option>
                     <option value="pattern3">パターン3: Galaxy S20</option>
+                    <option value="pattern4">パターン4: 新端末</option>
                   </select>
                 </div>
                 <label class="file-action" for="screenshotFile">
@@ -924,6 +1128,43 @@
                     <button id="applyScanButton" class="primary" type="button">この内容で反映</button>
                     <button id="clearScanButton" class="secondary" type="button">やり直す</button>
                   </div>
+                </div>
+
+                <div class="batch-box">
+                  <strong>複数スクショを一括評価</strong>
+                  <div class="note">1000枚規模でも選択できます。処理は1枚ずつ進め、途中停止できます。OCR候補はCSV出力前に表で確認してください。表のポケモン名と個体値は直接修正できます。</div>
+                  <label class="file-action" for="batchScreenshotFiles">
+                    複数スクショを選択
+                    <input id="batchScreenshotFiles" type="file" accept="image/*" multiple>
+                  </label>
+                  <div class="batch-actions">
+                    <button id="startBatchButton" class="primary" type="button">一括評価を開始</button>
+                    <button id="stopBatchButton" class="secondary" type="button" disabled>停止</button>
+                    <button id="exportBatchButton" class="secondary" type="button" disabled>CSV出力</button>
+                  </div>
+                  <div id="batchStatus" class="batch-status">複数画像を選択すると一括評価できます。</div>
+                  <div id="batchTableWrap" class="batch-table-wrap">
+                    <table class="batch-table">
+                      <thead>
+                        <tr>
+                          <th>#</th>
+                          <th>ファイル</th>
+                          <th>ポケモン</th>
+                          <th>個体値</th>
+                          <th>リーグ</th>
+                          <th>順位</th>
+                          <th>理想比</th>
+                          <th>PL</th>
+                          <th>CP</th>
+                          <th>タグ</th>
+                          <th>判定</th>
+                          <th>メモ</th>
+                        </tr>
+                      </thead>
+                      <tbody id="batchTableBody"></tbody>
+                    </table>
+                  </div>
+                  <datalist id="batchPokemonList"></datalist>
                 </div>
               </div>
             </div>
@@ -1018,7 +1259,10 @@
       minIv: 0,
       input: { attack: 0, defense: 15, stamina: 15 },
       rankings: [],
-      rankCache: new Map()
+      rankCache: new Map(),
+      batchRows: [],
+      batchStopRequested: false,
+      batchRunning: false
     };
 
     const elements = {
@@ -1046,6 +1290,14 @@
       scanDebug: document.querySelector("#scanDebug"),
       applyScanButton: document.querySelector("#applyScanButton"),
       clearScanButton: document.querySelector("#clearScanButton"),
+      batchScreenshotFiles: document.querySelector("#batchScreenshotFiles"),
+      startBatchButton: document.querySelector("#startBatchButton"),
+      stopBatchButton: document.querySelector("#stopBatchButton"),
+      exportBatchButton: document.querySelector("#exportBatchButton"),
+      batchStatus: document.querySelector("#batchStatus"),
+      batchTableWrap: document.querySelector("#batchTableWrap"),
+      batchTableBody: document.querySelector("#batchTableBody"),
+      batchPokemonList: document.querySelector("#batchPokemonList"),
       atkIv: document.querySelector("#atkIv"),
       defIv: document.querySelector("#defIv"),
       staIv: document.querySelector("#staIv"),
@@ -1142,11 +1394,521 @@
       return `${ivs.attack}/${ivs.defense}/${ivs.stamina}`;
     }
 
+    function pokemonKey(pokemon) {
+      return pokemon.sourceId || `${pokemon.id}:${pokemon.name}`;
+    }
+
+    function displayPokemonName(pokemon) {
+      return pokemon ? `No.${pokemon.id} ${pokemon.name}` : "";
+    }
+
+    function findPokemonByBatchText(value) {
+      const normalized = normalizeNameText(value.replace(/^no\.?\s*\d+\s*/i, ""));
+      if (!normalized) return null;
+      return POKEMON.find((pokemon) =>
+        normalizeNameText(displayPokemonName(pokemon)) === normalized ||
+        normalizeNameText(pokemon.name) === normalized ||
+        normalizeNameText(pokemon.en) === normalized ||
+        String(pokemon.id) === normalized
+      ) || pokemonSearchCandidates(value)[0] || null;
+    }
+
     function formatNumber(value, digits = 1) {
       return new Intl.NumberFormat("ja-JP", {
         maximumFractionDigits: digits,
         minimumFractionDigits: digits
       }).format(value);
+    }
+
+    function ivTotal(ivs) {
+      return ivs.attack + ivs.defense + ivs.stamina;
+    }
+
+    function escapeHtml(value) {
+      return String(value)
+        .replaceAll("&", "&amp;")
+        .replaceAll("<", "&lt;")
+        .replaceAll(">", "&gt;")
+        .replaceAll('"', "&quot;");
+    }
+
+    function escapeCsv(value) {
+      const text = String(value ?? "");
+      if (/[",\n\r]/.test(text)) return `"${text.replaceAll('"', '""')}"`;
+      return text;
+    }
+
+    function selectedBuildForPokemonIvs(pokemon, ivs) {
+      const rankings = rankPokemon(pokemon, state.league, state.maxLevel, state.minIv);
+      const selected = rankings.find((row) => ivKey(row.ivs) === ivKey(ivs));
+      if (selected) return { selected, total: rankings.length };
+
+      const outOfFilterBuild = bestBuildForIvs(pokemon, ivs, state.league, state.maxLevel);
+      if (!outOfFilterBuild) return { selected: null, total: rankings.length };
+      return {
+        selected: {
+          ...outOfFilterBuild,
+          rank: "-",
+          percent: (outOfFilterBuild.statProduct / (rankings[0]?.statProduct || outOfFilterBuild.statProduct)) * 100
+        },
+        total: rankings.length
+      };
+    }
+
+    function familyResultsForPokemonIvs(pokemon, ivs) {
+      return POKEMON.filter((candidate) => candidate.family === pokemon.family)
+        .sort((a, b) => a.id - b.id || a.name.localeCompare(b.name, "ja"))
+        .map((candidate) => ({ pokemon: candidate, ...selectedBuildForPokemonIvs(candidate, ivs) }));
+    }
+
+    function buildOrganizerAdvice(selected, familyResults) {
+      const league = LEAGUES[state.league];
+      const total = ivTotal(state.input);
+      const numericRank = typeof selected.rank === "number" ? selected.rank : null;
+      const bestFamily = familyResults
+        .filter((result) => result.selected && typeof result.selected.rank === "number")
+        .sort((a, b) => a.selected.rank - b.selected.rank)[0];
+      const currentFamily = familyResults.find((result) => result.pokemon.sourceId === state.pokemon.sourceId);
+      const reasons = [];
+      let verdict = "比較候補";
+      let tag = "比較";
+
+      if (total === 45) {
+        verdict = "保存";
+        tag = "100%";
+        reasons.push("個体値100%です。レイド、マスター、コレクション用に残す価値があります。");
+      }
+
+      if (numericRank !== null && numericRank <= 20) {
+        verdict = "PvP即残し";
+        tag = `PvP${league.label}`;
+        reasons.push(`${league.label}リーグで${numericRank}位です。育成候補として強く残したい個体です。`);
+      } else if (numericRank !== null && numericRank <= 100) {
+        if (verdict !== "PvP即残し") {
+          verdict = "PvP候補";
+          tag = `PvP${league.label}`;
+        }
+        reasons.push(`${league.label}リーグTOP100圏内です。手持ちが少ないポケモンなら残す候補です。`);
+      } else if (selected.percent >= 98.5) {
+        if (verdict === "比較候補") tag = "PvP比較";
+        reasons.push(`理想比${formatNumber(selected.percent, 2)}%です。順位は低めでも実用差を確認する価値があります。`);
+      }
+
+      if (total >= 43 && total < 45) {
+        if (verdict === "比較候補") {
+          verdict = "高個体";
+          tag = "高個体";
+        }
+        reasons.push(`個体値合計${total}/45です。レイドやジム用の候補として比較できます。`);
+      }
+
+      if (bestFamily && bestFamily.pokemon.sourceId !== state.pokemon.sourceId && bestFamily.selected.rank <= 100) {
+        reasons.push(`同じ進化系では${bestFamily.pokemon.name}が${bestFamily.selected.rank}位で最も良い結果です。進化先候補として確認してください。`);
+      } else if (currentFamily?.selected && typeof currentFamily.selected.rank === "number" && currentFamily.selected.rank <= 100) {
+        reasons.push("現在選択している進化先で順位が良く、タグ付けして残す判断がしやすい個体です。");
+      }
+
+      if (!reasons.length) {
+        verdict = "博士送り候補";
+        tag = "整理候補";
+        reasons.push("PvP順位、理想比、高個体値のどれも強い保存理由がありません。色違い、限定技、思い出、レア度を確認してから整理候補にできます。");
+      }
+
+      const rankText = numericRank !== null ? `${numericRank}位` : "対象外";
+      const memo = `${state.pokemon.name} ${ivKey(state.input)} ${league.label}${rankText} 理想比${formatNumber(selected.percent, 2)}% PL${selected.level} CP${selected.cp}`;
+      const nameSearch = state.pokemon.name;
+      const safeTransferSearch = "0*,1*,2*&!色違い&!伝説&!幻&!お気に入り";
+
+      return {
+        verdict,
+        tag,
+        reasons,
+        copies: [
+          { label: "整理タグ", value: tag },
+          { label: "個体メモ", value: memo },
+          { label: "名前検索", value: nameSearch },
+          { label: "低個体検索", value: safeTransferSearch }
+        ]
+      };
+    }
+
+    function buildBatchAdvice(pokemon, ivs, selected, familyResults) {
+      if (!selected) {
+        return {
+          verdict: "要確認",
+          tag: "要確認",
+          note: "CP制限内の候補を作れませんでした。読み取り内容を確認してください。"
+        };
+      }
+
+      const league = LEAGUES[state.league];
+      const total = ivTotal(ivs);
+      const numericRank = typeof selected.rank === "number" ? selected.rank : null;
+      const bestFamily = familyResults
+        .filter((result) => result.selected && typeof result.selected.rank === "number")
+        .sort((a, b) => a.selected.rank - b.selected.rank)[0];
+      let verdict = "比較候補";
+      let tag = "比較";
+      const notes = [];
+
+      if (total === 45) {
+        verdict = "保存";
+        tag = "100%";
+        notes.push("個体値100%");
+      }
+
+      if (numericRank !== null && numericRank <= 20) {
+        verdict = "PvP即残し";
+        tag = `PvP${league.label}`;
+        notes.push(`${league.label}${numericRank}位`);
+      } else if (numericRank !== null && numericRank <= 100) {
+        if (verdict !== "PvP即残し") {
+          verdict = "PvP候補";
+          tag = `PvP${league.label}`;
+        }
+        notes.push(`${league.label}TOP100`);
+      } else if (selected.percent >= 98.5) {
+        if (verdict === "比較候補") tag = "PvP比較";
+        notes.push(`理想比${formatNumber(selected.percent, 2)}%`);
+      }
+
+      if (total >= 43 && total < 45) {
+        if (verdict === "比較候補") {
+          verdict = "高個体";
+          tag = "高個体";
+        }
+        notes.push(`高個体${total}/45`);
+      }
+
+      if (bestFamily && pokemonKey(bestFamily.pokemon) !== pokemonKey(pokemon) && bestFamily.selected.rank <= 100) {
+        notes.push(`進化系候補: ${bestFamily.pokemon.name} ${bestFamily.selected.rank}位`);
+      }
+
+      if (!notes.length) {
+        verdict = "博士送り候補";
+        tag = "整理候補";
+        notes.push("保存理由が弱い。色違い/限定技/レア度は手動確認");
+      }
+
+      return {
+        verdict,
+        tag,
+        note: notes.join(" / ")
+      };
+    }
+
+    function buildBatchRow(index, file, ivResult, nameResult) {
+      const pokemon = nameResult.candidates?.[0] || state.pokemon;
+      if (!ivResult.success) {
+        return {
+          index,
+          fileName: file.name,
+          pokemon,
+          ivs: null,
+          league: LEAGUES[state.league].label,
+          rank: "",
+          percent: "",
+          level: "",
+          cp: "",
+          tag: "要確認",
+          verdict: "読み取り失敗",
+          note: ivResult.message || "個体値ゲージを読み取れませんでした。",
+          ocrNote: nameResult.message || "",
+          status: "failed"
+        };
+      }
+
+      const ivs = ivResult.values;
+      const { selected, total } = selectedBuildForPokemonIvs(pokemon, ivs);
+      const familyResults = familyResultsForPokemonIvs(pokemon, ivs);
+      const advice = buildBatchAdvice(pokemon, ivs, selected, familyResults);
+      const rankText = selected && typeof selected.rank === "number" ? `${selected.rank}/${total}` : selected ? "対象外" : "";
+      return {
+        index,
+        fileName: file.name,
+        pokemon,
+        ivs,
+        league: LEAGUES[state.league].label,
+        rank: rankText,
+        percent: selected ? formatNumber(selected.percent, 2) : "",
+        level: selected?.level ?? "",
+        cp: selected?.cp ?? "",
+        tag: advice.tag,
+        verdict: advice.verdict,
+        note: `${advice.note}${nameResult.message ? ` / ${nameResult.message}` : ""}`,
+        ocrNote: nameResult.message || "",
+        status: "ok"
+      };
+    }
+
+    function recalculateBatchRow(row, pokemon, ivs, noteSuffix = "手動修正済み") {
+      if (!pokemon || !ivs) {
+        return {
+          ...row,
+          pokemon,
+          ivs,
+          league: LEAGUES[state.league].label,
+          rank: "",
+          percent: "",
+          level: "",
+          cp: "",
+          tag: "要確認",
+          verdict: "要確認",
+          note: "ポケモン名または個体値を確認してください。",
+          status: "failed"
+        };
+      }
+
+      const { selected, total } = selectedBuildForPokemonIvs(pokemon, ivs);
+      const familyResults = familyResultsForPokemonIvs(pokemon, ivs);
+      const advice = buildBatchAdvice(pokemon, ivs, selected, familyResults);
+      const rankText = selected && typeof selected.rank === "number" ? `${selected.rank}/${total}` : selected ? "対象外" : "";
+      return {
+        ...row,
+        pokemon,
+        ivs,
+        league: LEAGUES[state.league].label,
+        rank: rankText,
+        percent: selected ? formatNumber(selected.percent, 2) : "",
+        level: selected?.level ?? "",
+        cp: selected?.cp ?? "",
+        tag: advice.tag,
+        verdict: advice.verdict,
+        note: `${advice.note}${noteSuffix ? ` / ${noteSuffix}` : ""}`,
+        status: selected ? "ok" : "failed"
+      };
+    }
+
+    function renderBatchRows() {
+      elements.batchTableBody.innerHTML = state.batchRows.map((row) => `
+        <tr class="${row.status === "failed" ? "highlight" : ""}" data-index="${row.index}">
+          <td>${row.index}</td>
+          <td>${escapeHtml(row.fileName)}</td>
+          <td>
+            <input class="batch-edit" data-batch-field="pokemon" data-index="${row.index}" list="batchPokemonList" value="${escapeHtml(displayPokemonName(row.pokemon))}" aria-label="${row.index}行目のポケモン名">
+          </td>
+          <td>
+            <div class="batch-ivs">
+              <input class="batch-iv-input" data-batch-field="attack" data-index="${row.index}" type="number" min="0" max="15" value="${row.ivs ? row.ivs.attack : ""}" aria-label="${row.index}行目の攻撃個体値">
+              <input class="batch-iv-input" data-batch-field="defense" data-index="${row.index}" type="number" min="0" max="15" value="${row.ivs ? row.ivs.defense : ""}" aria-label="${row.index}行目の防御個体値">
+              <input class="batch-iv-input" data-batch-field="stamina" data-index="${row.index}" type="number" min="0" max="15" value="${row.ivs ? row.ivs.stamina : ""}" aria-label="${row.index}行目のHP個体値">
+            </div>
+          </td>
+          <td>${escapeHtml(row.league)}</td>
+          <td>${escapeHtml(row.rank)}</td>
+          <td>${row.percent ? `${escapeHtml(row.percent)}%` : ""}</td>
+          <td>${escapeHtml(row.level)}</td>
+          <td>${escapeHtml(row.cp)}</td>
+          <td>${escapeHtml(row.tag)}</td>
+          <td>${escapeHtml(row.verdict)}</td>
+          <td><div class="batch-note" title="${escapeHtml(row.note)}">${escapeHtml(row.note)}</div></td>
+        </tr>
+      `).join("");
+      elements.batchTableWrap.classList.toggle("active", state.batchRows.length > 0);
+      elements.exportBatchButton.disabled = state.batchRows.length === 0;
+    }
+
+    function updateBatchRowFromInputs(index) {
+      const rowIndex = state.batchRows.findIndex((row) => row.index === index);
+      if (rowIndex === -1) return;
+      const rowElement = elements.batchTableBody.querySelector(`tr[data-index="${index}"]`);
+      if (!rowElement) return;
+      const pokemonInput = rowElement.querySelector('[data-batch-field="pokemon"]');
+      const attackInput = rowElement.querySelector('[data-batch-field="attack"]');
+      const defenseInput = rowElement.querySelector('[data-batch-field="defense"]');
+      const staminaInput = rowElement.querySelector('[data-batch-field="stamina"]');
+      const pokemon = findPokemonByBatchText(pokemonInput.value);
+      const hasAllIvs = [attackInput, defenseInput, staminaInput].every((input) => input.value !== "");
+      const ivs = hasAllIvs ? {
+        attack: clampIv(attackInput.value),
+        defense: clampIv(defenseInput.value),
+        stamina: clampIv(staminaInput.value)
+      } : null;
+
+      if (ivs) {
+        attackInput.value = ivs.attack;
+        defenseInput.value = ivs.defense;
+        staminaInput.value = ivs.stamina;
+      }
+
+      state.batchRows[rowIndex] = recalculateBatchRow(state.batchRows[rowIndex], pokemon, ivs);
+      renderBatchRows();
+      setBatchStatus(`${index}行目を修正して再計算しました。CSV出力にも反映されます。`);
+    }
+
+    function populateBatchPokemonList() {
+      elements.batchPokemonList.innerHTML = POKEMON.map((pokemon) =>
+        `<option value="${escapeHtml(displayPokemonName(pokemon))}">${escapeHtml(pokemon.en)}</option>`
+      ).join("");
+    }
+
+    function setBatchStatus(message) {
+      elements.batchStatus.textContent = message;
+    }
+
+    function setBatchRunning(running) {
+      state.batchRunning = running;
+      elements.startBatchButton.disabled = running;
+      elements.stopBatchButton.disabled = !running;
+      elements.batchScreenshotFiles.disabled = running;
+      elements.exportBatchButton.disabled = running || state.batchRows.length === 0;
+    }
+
+    async function startBatchScan() {
+      const files = Array.from(elements.batchScreenshotFiles.files || []);
+      if (!files.length || state.batchRunning) return;
+
+      state.batchRows = [];
+      state.batchStopRequested = false;
+      renderBatchRows();
+      setBatchRunning(true);
+      setBatchStatus(`${files.length}枚を順番に解析します。`);
+
+      for (let index = 0; index < files.length; index += 1) {
+        if (state.batchStopRequested) break;
+        const file = files[index];
+        const rowNumber = index + 1;
+        setBatchStatus(`${rowNumber}/${files.length}: ${file.name} を解析中...`);
+        try {
+          const { ivResult, nameResult } = await analyzeScreenshotFile(file, {
+            preview: false,
+            status: (message) => setBatchStatus(`${rowNumber}/${files.length}: ${file.name} / ${message}`)
+          });
+          state.batchRows.push(buildBatchRow(rowNumber, file, ivResult, nameResult));
+        } catch (error) {
+          state.batchRows.push({
+            index: rowNumber,
+            fileName: file.name,
+            pokemon: null,
+            ivs: null,
+            league: LEAGUES[state.league].label,
+            rank: "",
+            percent: "",
+            level: "",
+            cp: "",
+            tag: "要確認",
+            verdict: "解析エラー",
+            note: error.message || "画像解析に失敗しました。",
+            status: "failed"
+          });
+        }
+        renderBatchRows();
+        await new Promise((resolve) => window.setTimeout(resolve, 30));
+      }
+
+      const stopped = state.batchStopRequested;
+      state.batchStopRequested = false;
+      setBatchRunning(false);
+      const failed = state.batchRows.filter((row) => row.status === "failed").length;
+      setBatchStatus(`${stopped ? "停止しました。" : "完了しました。"} ${state.batchRows.length}/${files.length}枚、要確認 ${failed}件。`);
+    }
+
+    function exportBatchCsv() {
+      if (!state.batchRows.length) return;
+      const headers = ["index", "file", "pokemon_id", "pokemon_name", "ivs", "league", "rank", "percent", "level", "cp", "tag", "verdict", "note"];
+      const lines = [
+        headers.join(","),
+        ...state.batchRows.map((row) => [
+          row.index,
+          row.fileName,
+          row.pokemon?.id || "",
+          row.pokemon?.name || "",
+          row.ivs ? ivKey(row.ivs) : "",
+          row.league,
+          row.rank,
+          row.percent,
+          row.level,
+          row.cp,
+          row.tag,
+          row.verdict,
+          row.note
+        ].map(escapeCsv).join(","))
+      ];
+      const blob = new Blob([`\uFEFF${lines.join("\n")}`], { type: "text/csv;charset=utf-8" });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      const timestamp = new Date().toISOString().slice(0, 19).replace(/[:T]/g, "-");
+      link.href = url;
+      link.download = `pokemon-box-evaluation-${timestamp}.csv`;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      URL.revokeObjectURL(url);
+    }
+
+    function renderOrganizerAdvice(selected, familyResults) {
+      const advice = buildOrganizerAdvice(selected, familyResults);
+      return `
+        <div class="organizer">
+          <div class="organizer-head">
+            <h3>ボックス整理アシスト</h3>
+            <div class="organizer-verdict">${escapeHtml(advice.verdict)}</div>
+          </div>
+          <div class="organizer-body">
+            <ul class="organizer-reasons">
+              ${advice.reasons.map((reason) => `<li>${escapeHtml(reason)}</li>`).join("")}
+            </ul>
+            <div class="copy-grid">
+              ${advice.copies.map((item) => `
+                <div class="copy-item">
+                  <div class="copy-text" title="${escapeHtml(item.value)}">${escapeHtml(item.label)}: ${escapeHtml(item.value)}</div>
+                  <button class="copy-button" type="button" data-copy="${escapeHtml(item.value)}">コピー</button>
+                </div>
+              `).join("")}
+            </div>
+          </div>
+        </div>
+      `;
+    }
+
+    async function copyText(value, button) {
+      const showTemporaryState = (text) => {
+        button.classList.add("copied");
+        button.textContent = text;
+        window.setTimeout(() => {
+          button.classList.remove("copied");
+          button.textContent = "コピー";
+        }, 1200);
+      };
+
+      const fallbackCopy = () => {
+        const textarea = document.createElement("textarea");
+        textarea.value = value;
+        textarea.setAttribute("readonly", "");
+        textarea.style.position = "fixed";
+        textarea.style.left = "-9999px";
+        document.body.appendChild(textarea);
+        textarea.select();
+        const copied = document.execCommand("copy");
+        textarea.remove();
+        if (!copied) throw new Error("Copy command failed");
+      };
+
+      const selectCopyText = () => {
+        const textElement = button.closest(".copy-item")?.querySelector(".copy-text");
+        if (!textElement) return;
+        const range = document.createRange();
+        range.selectNodeContents(textElement);
+        const selection = window.getSelection();
+        selection.removeAllRanges();
+        selection.addRange(range);
+      };
+
+      try {
+        if (navigator.clipboard?.writeText) {
+          try {
+            await navigator.clipboard.writeText(value);
+          } catch (error) {
+            fallbackCopy();
+          }
+        } else {
+          fallbackCopy();
+        }
+        showTemporaryState("済");
+      } catch (error) {
+        selectCopyText();
+        showTemporaryState("選択済");
+      }
     }
 
     function setPokemon(pokemon) {
@@ -1300,6 +2062,10 @@
       return isAppraisalBarPixel(r, g, b) || isAppraisalRedPixel(r, g, b);
     }
 
+    function isSegmentedGaugePattern(pattern) {
+      return pattern === "pattern3" || pattern === "pattern4";
+    }
+
     function isAppraisalTrackPixel(r, g, b, pattern) {
       const grayTrack = r > 175 && r < 235 && g > 175 && g < 235 && b > 165 && b < 230 && Math.max(r, g, b) - Math.min(r, g, b) < 35;
       return isAppraisalFilledPixel(r, g, b, pattern) || grayTrack;
@@ -1434,9 +2200,10 @@
     }
 
     function chooseGalaxyGaugeLayout(imageData, width, height, groups, pattern) {
+      const maxWidthRatio = pattern === "pattern4" ? 0.5 : 0.44;
       const candidates = groups
         .filter((group) => group.center >= height * 0.62)
-        .filter((group) => group.bounds.width >= width * 0.18 && group.bounds.width <= width * 0.44)
+        .filter((group) => group.bounds.width >= width * 0.18 && group.bounds.width <= width * maxWidthRatio)
         .sort((a, b) => a.center - b.center);
       let best = null;
 
@@ -1479,7 +2246,7 @@
     }
 
     function chooseGaugeLayout(imageData, width, height, groups, pattern) {
-      if (pattern === "pattern3") return chooseGalaxyGaugeLayout(imageData, width, height, groups, pattern);
+      if (isSegmentedGaugePattern(pattern)) return chooseGalaxyGaugeLayout(imageData, width, height, groups, pattern);
       const centers = groups.map((group) => group.center).sort((a, b) => a - b);
       let best = null;
       for (let index = 0; index <= centers.length - 3; index += 1) {
@@ -1491,9 +2258,9 @@
 
     function detectIvBarsByBlocks(imageData, width, height, centers, blocks, pattern) {
       const bandHalfHeight = Math.max(6, Math.round(height * 0.0045));
-      const filledColumnThreshold = pattern === "pattern3" ? 0.42 : 0.18;
+      const filledColumnThreshold = isSegmentedGaugePattern(pattern) ? 0.42 : 0.18;
       const valueFromBlockFraction = (fraction) => {
-        if (pattern === "pattern3") {
+        if (isSegmentedGaugePattern(pattern)) {
           return Math.max(0, Math.min(5, Math.floor(fraction * 5 + 0.15)));
         }
         return Math.max(0, Math.min(5, Math.round(fraction * 5)));
@@ -1511,7 +2278,7 @@
             for (let y = Math.round(center - bandHalfHeight); y <= Math.round(center + bandHalfHeight); y += 1) {
               if (y < 0 || y >= height) continue;
               const index = (y * width + x) * 4;
-              if (pattern === "pattern3") {
+              if (isSegmentedGaugePattern(pattern)) {
                 redSamples += 1;
                 if (isAppraisalRedPixel(imageData.data[index], imageData.data[index + 1], imageData.data[index + 2])) redHits += 1;
               }
@@ -1527,7 +2294,7 @@
           return sum + value;
         }, 0);
         const redRatio = redSamples ? redHits / redSamples : 0;
-        const corrected = pattern === "pattern3" && total >= 15 && redRatio < 0.08 ? 14 : total;
+        const corrected = isSegmentedGaugePattern(pattern) && total >= 15 && redRatio < 0.08 ? 14 : total;
         rowDebug.push(`y${Math.round(center)} red=${redRatio.toFixed(2)} blocks=${blockValues.join("+")} ${total}->${corrected}`);
         return corrected;
       });
@@ -1677,7 +2444,7 @@
     }
 
     function detectIvBars(canvas, selectedPattern = "auto") {
-      const patterns = selectedPattern === "auto" ? ["pattern1", "pattern2", "pattern3"] : [selectedPattern];
+      const patterns = selectedPattern === "auto" ? ["pattern1", "pattern2", "pattern3", "pattern4"] : [selectedPattern];
       const results = patterns.map((pattern) => detectIvBarsForPattern(canvas, pattern));
       const successful = results.find((result) => result.success);
       if (successful) {
@@ -1949,15 +2716,16 @@
       elements.scanResult.classList.add("active");
     }
 
-    async function handleScreenshotFile(file) {
-      resetScanResult();
-      setScanStatus("画像を読み込んでいます...");
+    async function analyzeScreenshotFile(file, options = {}) {
+      if (options.status) options.status("画像を読み込んでいます...");
       const image = await loadImageFromFile(file);
-      elements.screenshotPreview.src = image.src;
-      elements.screenshotPreview.classList.add("active");
+      if (options.preview) {
+        elements.screenshotPreview.src = image.src;
+        elements.screenshotPreview.classList.add("active");
+      }
       const canvas = imageToCanvas(image);
 
-      setScanStatus("個体値ゲージを解析しています...");
+      if (options.status) options.status("個体値ゲージを解析しています...");
       const selectedPattern = elements.scanPattern.value;
       const ivResult = detectIvBars(canvas, selectedPattern);
       if (ivResult.debug) {
@@ -1967,11 +2735,11 @@
           ivResult.debug
         ].join("\n");
       }
-      setScanStatus(ivResult.message);
+      if (options.status) options.status(ivResult.message);
 
       let nameResult = { candidates: [state.pokemon], message: "" };
       try {
-        setScanStatus(`${ivResult.message} / ポケモン名をOCR解析しています...`);
+        if (options.status) options.status(`${ivResult.message} / ポケモン名をOCR解析しています...`);
         nameResult = await recognizePokemonName(canvas);
       } catch (error) {
         nameResult = {
@@ -1979,6 +2747,16 @@
           message: "OCR解析に失敗しました。ポケモン名は現在の選択を使うか、手動で変更してください。"
         };
       }
+
+      return { image, canvas, ivResult, nameResult };
+    }
+
+    async function handleScreenshotFile(file) {
+      resetScanResult();
+      const { ivResult, nameResult } = await analyzeScreenshotFile(file, {
+        preview: true,
+        status: setScanStatus
+      });
 
       renderScanResult(ivResult, nameResult);
       setScanStatus(`${ivResult.message} / ${nameResult.message}`);
@@ -2051,6 +2829,7 @@
             <div class="stat"><b>防御 / HP</b><span>${formatNumber(selected.defense)} / ${selected.hp}</span></div>
           </div>
         </div>
+        ${renderOrganizerAdvice(selected, familyResults)}
         ${renderFamilyResults(familyResults)}
       `;
     }
@@ -2179,6 +2958,11 @@
     }
 
     elements.search.addEventListener("input", renderSuggestions);
+    elements.result.addEventListener("click", (event) => {
+      const button = event.target.closest(".copy-button");
+      if (!button) return;
+      copyText(button.dataset.copy || "", button);
+    });
     elements.maxLevel.addEventListener("change", calculate);
     elements.minIvToggle.addEventListener("change", calculate);
     elements.calculateButton.addEventListener("click", calculate);
@@ -2195,6 +2979,21 @@
         setScanStatus(error.message || "スクショ解析に失敗しました。");
       }
     });
+    elements.batchScreenshotFiles.addEventListener("change", () => {
+      const count = elements.batchScreenshotFiles.files?.length || 0;
+      setBatchStatus(count ? `${count}枚を選択しました。一括評価を開始できます。` : "複数画像を選択すると一括評価できます。");
+    });
+    elements.batchTableBody.addEventListener("change", (event) => {
+      const input = event.target.closest("[data-batch-field]");
+      if (!input) return;
+      updateBatchRowFromInputs(Number(input.dataset.index));
+    });
+    elements.startBatchButton.addEventListener("click", startBatchScan);
+    elements.stopBatchButton.addEventListener("click", () => {
+      state.batchStopRequested = true;
+      setBatchStatus("停止リクエストを受け付けました。現在の1枚が終わったら止まります。");
+    });
+    elements.exportBatchButton.addEventListener("click", exportBatchCsv);
     elements.scanPattern.addEventListener("change", async () => {
       const file = elements.screenshotFile.files?.[0];
       if (!file) return;
@@ -2243,6 +3042,7 @@
     });
 
     initializeFromQuery();
+    populateBatchPokemonList();
     renderSelectedPokemon();
     renderLeagueButtons();
     renderIvGauges();
