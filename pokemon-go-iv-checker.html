@@ -2249,7 +2249,8 @@
             const centers = selectedGroups.map((group) => group.center);
             const gaps = [centers[1] - centers[0], centers[2] - centers[1]];
             const averageGap = (gaps[0] + gaps[1]) / 2;
-            if (averageGap < height * 0.025 || averageGap > height * 0.075) continue;
+            const maxAverageGap = pattern === "pattern4" ? height * 0.055 : height * 0.075;
+            if (averageGap < height * 0.025 || averageGap > maxAverageGap) continue;
             const gapBalance = Math.abs(gaps[0] - gaps[1]) / averageGap;
             if (gapBalance > 0.42) continue;
 
@@ -2479,7 +2480,7 @@
     }
 
     function detectIvBars(canvas, selectedPattern = "auto") {
-      const patterns = selectedPattern === "auto" ? ["pattern1", "pattern2", "pattern3", "pattern4"] : [selectedPattern];
+      const patterns = selectedPattern === "auto" ? ["pattern4", "pattern3", "pattern1", "pattern2"] : [selectedPattern];
       const results = patterns.map((pattern) => detectIvBarsForPattern(canvas, pattern));
       const successful = results.find((result) => result.success);
       if (successful) {
@@ -2625,6 +2626,20 @@
         .map((item) => item.pokemon);
     }
 
+    function extractPokemonNameFromCatchText(text) {
+      const compact = text.replace(/\s+/g, "");
+      const patterns = [
+        /この(.{2,12}?)(?:を|は)捕まえた/,
+        /この(.{2,12}?)(?:を|は)捕まえ/,
+        /この(.{2,12}?)(?:を|は)/
+      ];
+      for (const pattern of patterns) {
+        const match = compact.match(pattern);
+        if (match?.[1]) return match[1];
+      }
+      return "";
+    }
+
     function pokemonSearchCandidates(query) {
       const normalizedQuery = normalizeNameText(query);
       if (!normalizedQuery) return [state.pokemon];
@@ -2702,6 +2717,10 @@
       return cropAreaForOcr(canvas, 0.14, 0.32, 0.72, 0.14);
     }
 
+    function cropNameTightArea(canvas) {
+      return cropAreaForOcr(canvas, 0.22, 0.36, 0.56, 0.09);
+    }
+
     function cropCatchTextArea(canvas) {
       return cropAreaForOcr(canvas, 0.02, 0.83, 0.96, 0.13);
     }
@@ -2722,15 +2741,20 @@
       });
 
       const nameResult = await recognize(cropNameArea(canvas), "名前欄");
+      const tightNameResult = await recognize(cropNameTightArea(canvas), "名前欄");
       const catchTextResult = await recognize(cropCatchTextArea(canvas), "捕獲説明");
       const nameText = nameResult.data.text || "";
+      const tightNameText = tightNameResult.data.text || "";
       const catchText = catchTextResult.data.text || "";
-      const text = [nameText, catchText].filter((value) => value.trim()).join("\n");
+      const catchNameText = extractPokemonNameFromCatchText(catchText);
+      const text = [tightNameText, nameText, catchNameText, catchText].filter((value) => value.trim()).join("\n");
       return {
         text,
         candidates: findPokemonCandidatesFromTexts([
-          { text: nameText, weight: 1 },
-          { text: catchText, weight: 1.25 }
+          { text: tightNameText, weight: 1.5 },
+          { text: nameText, weight: 0.85 },
+          { text: catchNameText, weight: 2.4 },
+          { text: catchText, weight: 1.75 }
         ]),
         message: text.trim() ? `OCR候補: ${text.trim().replace(/\\s+/g, " ")}` : "ポケモン名を読み取れませんでした。候補を確認してください。"
       };
